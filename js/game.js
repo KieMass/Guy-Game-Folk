@@ -40,6 +40,7 @@ const Game = {
   prevOnGround: false,
   prevState: 'playing',
   isTouch: false,
+  deathTimer: 0,
 };
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -288,6 +289,7 @@ function getInput() {
 // ---------------- gameplay update ----------------
 function updatePlaying(dt) {
   const level = Game.currentLevel, player = Game.player;
+  if (player.dead) { updateDeathPause(dt); return; }
   Game.levelElapsed += dt;
 
   level.platforms.forEach((p) => p.update(dt, Game.t));
@@ -361,6 +363,7 @@ function updatePlaying(dt) {
 
 function updateBoss(dt) {
   const def = Game.currentBossDef, boss = Game.bossState, player = Game.player;
+  if (player.dead) { updateDeathPause(dt); return; }
 
   def.arenaPlatforms.forEach((p) => p.update(dt, Game.t));
   const world = { player, spawnProjectile: (p) => Game.projectiles.push(p) };
@@ -506,21 +509,41 @@ function updateToast(dt) {
 }
 
 function hurtPlayerFromContact() {
+  if (Game.player.dead) return;
   if (!Game.player.takeHit()) return;
-  Game.lives--;
-  spawnBurst(Game.player.x + Game.player.w / 2, Game.player.y + Game.player.h / 2, '#CE1126', 10);
-  checkGameOverOrRespawn();
+  triggerDeath('#CE1126');
 }
 
 function killPlayerInstant() {
-  Game.lives--;
-  spawnBurst(Game.player.x + Game.player.w / 2, Game.player.y + Game.player.h / 2, '#1c6fbf', 12);
-  checkGameOverOrRespawn();
+  if (Game.player.dead) return;
+  triggerDeath('#1c6fbf');
 }
 
-function checkGameOverOrRespawn() {
-  if (Game.lives <= 0) triggerGameOver();
-  else respawnPlayer();
+// Freezes normal gameplay for a beat after any death: stops all hazard/enemy
+// collision checks (see the `Game.player.dead` guards at the top of
+// updatePlaying/updateBoss) so a single fall can't chain into several more
+// hits before the respawn actually happens, gives the player a clear "you
+// got hit" beat, and only resolves to a respawn or game-over once it's safe.
+function triggerDeath(particleColor) {
+  Game.lives--;
+  spawnBurst(Game.player.x + Game.player.w / 2, Game.player.y + Game.player.h / 2, particleColor, 12);
+  Game.player.dead = true;
+  Game.player.vx = 0;
+  Game.player.vy = -320;
+  Game.player.state = 'fall';
+  Game.deathTimer = Game.lives <= 0 ? 1.4 : 1.1;
+}
+
+function updateDeathPause(dt) {
+  Game.deathTimer -= dt;
+  Game.player.vy = Math.min(MAX_FALL_SPEED, Game.player.vy + GRAVITY * dt);
+  Game.player.y += Game.player.vy * dt;
+  updateParticles(dt);
+  if (Game.deathTimer <= 0) {
+    Game.player.dead = false;
+    if (Game.lives <= 0) triggerGameOver();
+    else respawnPlayer();
+  }
 }
 
 function respawnPlayer() {

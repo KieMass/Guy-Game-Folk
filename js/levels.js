@@ -118,7 +118,7 @@ function buildLevel2() {
     id: 2, name: 'Demerara Riverside', location: 'Demerara River', width: w, groundY: GROUND_Y,
     theme: 'river', night: false,
     palette: { sky1: '#a7ddf0', sky2: '#eefaff', ground: '#8a6a3a', groundTop: '#7a5230', accent: '#009E49', accent2: '#FCD116' },
-    playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 1700, endX: 3300,
+    playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 1550, endX: 3300,
     platforms, hazards: g.hazards, enemies, collectibles,
   };
 }
@@ -161,7 +161,7 @@ function buildLevel3() {
     id: 3, name: 'Essequibo Mangroves', location: 'Essequibo River', width: w, groundY: GROUND_Y,
     theme: 'mangrove', night: false,
     palette: { sky1: '#bfe6c9', sky2: '#eefef2', ground: '#5b7a4a', groundTop: '#3fa34d', accent: '#009E49', accent2: '#CE1126' },
-    playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 1800, endX: 3500,
+    playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 1750, endX: 3500,
     platforms, hazards: g.hazards, enemies, collectibles,
   };
 }
@@ -251,7 +251,7 @@ function buildLevel5() {
     id: 5, name: 'Kaieteur Falls', location: 'Kaieteur National Park', width: w, groundY: GROUND_Y,
     theme: 'falls', night: false,
     palette: { sky1: '#9fd0e6', sky2: '#eafcff', ground: '#7a7a7a', groundTop: '#5a5a5a', accent: '#009E49', accent2: '#FCD116' },
-    playerStart: { x: 80, y: 380 }, checkpointX: 1800, endX: 3600,
+    playerStart: { x: 80, y: 380 }, checkpointX: 1600, endX: 3600,
     platforms, hazards: g.hazards, enemies, collectibles,
   };
 }
@@ -332,7 +332,7 @@ function buildLevel7() {
     id: 7, name: 'Pork-Knocker Trail', location: 'The Interior', width: w, groundY: GROUND_Y,
     theme: 'mining', night: false,
     palette: { sky1: '#d8c48a', sky2: '#f3e9c8', ground: '#6b4a2a', groundTop: '#8a6a3a', accent: '#FCD116', accent2: '#CE1126' },
-    playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 2100, endX: 4050,
+    playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 2050, endX: 4050,
     platforms, hazards: g.hazards, enemies, collectibles,
   };
 }
@@ -379,7 +379,7 @@ function buildLevel8() {
     id: 8, name: 'Bush Camp Clearing', location: 'Deep Interior Forest', width: w, groundY: GROUND_Y,
     theme: 'camp', night: false,
     palette: { sky1: '#4a7a4a', sky2: '#9fce8a', ground: '#3a5a2e', groundTop: '#4d7a3a', accent: '#FCD116', accent2: '#CE1126' },
-    playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 2000, endX: 4050,
+    playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 1850, endX: 4050,
     platforms, hazards: g.hazards, enemies, collectibles,
   };
 }
