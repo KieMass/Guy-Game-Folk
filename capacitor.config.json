@@ -1,0 +1,9 @@
+{
+  "appId": "com.guyanaquest.app",
+  "appName": "Guyana Quest",
+  "webDir": "www",
+  "backgroundColor": "#0b1f14",
+  "android": {
+    "backgroundColor": "#0b1f14"
+  }
+}

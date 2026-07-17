@@ -19,21 +19,22 @@ html, body {
   background: #0b1f14;
   font-family: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* Scales to fill either the viewport width or height (whichever is the
+   tighter constraint) while always preserving the 960:540 game aspect
+   ratio -- critical on phone screens, which rarely match a 16:9 desktop
+   window and would otherwise stretch the canvas. */
 #game-container {
   position: relative;
-  width: 960px;
-  height: 540px;
-  max-width: 100vw;
-  max-height: 100vh;
-  margin: 0 auto;
-  top: 50%;
-  transform: translateY(-50%);
+  width: min(960px, 100vw, calc(100vh * 960 / 540));
+  aspect-ratio: 960 / 540;
   background: #000;
   box-shadow: 0 0 40px rgba(0,0,0,0.6);
   overflow: hidden;
-  aspect-ratio: 960 / 540;
 }
 
 #game-canvas {
@@ -274,3 +275,83 @@ html, body {
 
 .screen h2.gameover-title { color: #ff5c6c; font-size: 40px; }
 .screen h2.victory-title { color: #FCD116; font-size: 32px; }
+
+/* ================= Touch controls (mobile / Android shell) ================= */
+#touch-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#touch-controls.hidden { display: none; }
+
+.touch-btn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  background: rgba(255,255,255,0.16);
+  border: 2px solid rgba(255,255,255,0.55);
+  color: #fff;
+  font-size: 22px;
+  border-radius: 50%;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.touch-btn:active,
+.touch-btn.touch-active {
+  background: rgba(255,255,255,0.4);
+}
+
+#touch-dpad {
+  position: absolute;
+  left: 4%;
+  bottom: 8%;
+  width: 150px;
+  height: 64px;
+  pointer-events: none;
+}
+.touch-btn-dpad {
+  width: 68px;
+  height: 64px;
+  border-radius: 14px;
+  bottom: 0;
+}
+#btn-left.touch-btn-dpad { left: 0; }
+#btn-right.touch-btn-dpad { right: 0; }
+
+#touch-actions {
+  position: absolute;
+  right: 4%;
+  bottom: 6%;
+  width: 170px;
+  height: 100px;
+  pointer-events: none;
+}
+.touch-btn-round {
+  width: 56px;
+  height: 56px;
+  bottom: 0;
+  right: 0;
+}
+#btn-swipe.touch-btn-round { right: 76px; bottom: 30px; }
+.touch-btn-big {
+  width: 78px;
+  height: 78px;
+  font-size: 30px;
+}
+
+.touch-btn-pause {
+  top: 68px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+}
+
+@media (orientation: portrait) {
+  #game-container { transform: none; }
+}

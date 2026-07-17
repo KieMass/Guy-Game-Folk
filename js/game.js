@@ -39,6 +39,7 @@ const Game = {
   introTimeout: null,
   prevOnGround: false,
   prevState: 'playing',
+  isTouch: false,
 };
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -74,9 +75,45 @@ function init() {
   if (btnRetry) btnRetry.addEventListener('click', retryGame);
   const btnAgain = document.getElementById('btn-playagain');
   if (btnAgain) btnAgain.addEventListener('click', backToTitle);
+  const btnResume = document.getElementById('btn-resume');
+  if (btnResume) btnResume.addEventListener('click', togglePause);
 
+  // level/boss intro cards have no button -- any tap on the card dismisses them,
+  // mirroring the "press any key" keyboard behavior for touch-only devices
+  const introScreen = document.getElementById('screen-intro');
+  if (introScreen) introScreen.addEventListener('click', () => { clearTimeout(Game.introTimeout); dismissIntro(); });
+  const bossIntroScreen = document.getElementById('screen-boss-intro');
+  if (bossIntroScreen) bossIntroScreen.addEventListener('click', () => { clearTimeout(Game.introTimeout); dismissBossIntro(); });
+
+  setupTouchControls();
   setState('title');
   requestAnimationFrame(loop);
+}
+
+// ---------------- touch controls ----------------
+function setupTouchControls() {
+  const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  const panel = document.getElementById('touch-controls');
+  if (!isTouch || !panel) return;
+  Game.isTouch = true;
+
+  const bind = (id, keyCode) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const press = (e) => { e.preventDefault(); Game.keys[keyCode] = true; el.classList.add('touch-active'); };
+    const release = (e) => { if (e) e.preventDefault(); Game.keys[keyCode] = false; el.classList.remove('touch-active'); };
+    el.addEventListener('pointerdown', press);
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+    el.addEventListener('pointerleave', release);
+  };
+  bind('btn-left', 'ArrowLeft');
+  bind('btn-right', 'ArrowRight');
+  bind('btn-jump', 'Space');
+  bind('btn-swipe', 'KeyX');
+
+  const btnPause = document.getElementById('btn-pause-touch');
+  if (btnPause) btnPause.addEventListener('click', (e) => { e.preventDefault(); togglePause(); });
 }
 
 function handleKeyAction(code) {
@@ -125,6 +162,12 @@ function setState(newState) {
 
   const bossWrap = document.getElementById('boss-health-wrap');
   if (newState === 'boss') bossWrap.classList.remove('hidden'); else bossWrap.classList.add('hidden');
+
+  if (Game.isTouch) {
+    const touchControls = document.getElementById('touch-controls');
+    if (['playing', 'paused', 'boss'].includes(newState)) touchControls.classList.remove('hidden');
+    else touchControls.classList.add('hidden');
+  }
 }
 
 function togglePause() {
