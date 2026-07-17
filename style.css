@@ -1,0 +1,232 @@
+/*
+  style.css
+  All menu / HUD / UI-overlay styling. The canvas itself is pure Canvas 2D art;
+  this file only styles the HTML overlay (HUD, title, intro cards, pause,
+  game over, victory) that sits on top of it.
+*/
+
+@font-face {
+  font-family: system-ui-stack;
+  src: local('Segoe UI');
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #0b1f14;
+  font-family: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+}
+
+#game-container {
+  position: relative;
+  width: 960px;
+  height: 540px;
+  max-width: 100vw;
+  max-height: 100vh;
+  margin: 0 auto;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #000;
+  box-shadow: 0 0 40px rgba(0,0,0,0.6);
+  overflow: hidden;
+  aspect-ratio: 960 / 540;
+}
+
+#game-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: optimizeSpeed;
+}
+
+/* ================= HUD ================= */
+#hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px 16px;
+  pointer-events: none;
+  font-weight: bold;
+  text-shadow: 0 2px 3px rgba(0,0,0,0.85);
+  color: #fff;
+}
+#hud.hidden { display: none; }
+
+#hud-left, #hud-right { display: flex; flex-direction: column; gap: 4px; }
+#hud-right { align-items: flex-end; }
+
+#hud-lives { font-size: 22px; letter-spacing: 2px; color: #ff5c6c; }
+#hud-level { font-size: 15px; color: #FCD116; }
+#hud-score { font-size: 16px; }
+#hud-gems { font-size: 14px; color: #6be3d1; }
+#hud-gems.hidden { display: none; }
+
+#boss-health-wrap {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  text-align: center;
+}
+#boss-health-wrap.hidden { display: none; }
+#boss-name {
+  font-size: 15px;
+  color: #fff;
+  margin-bottom: 4px;
+  text-shadow: 0 2px 3px rgba(0,0,0,0.85);
+}
+#boss-health-bar {
+  width: 100%;
+  height: 14px;
+  background: rgba(0,0,0,0.5);
+  border: 2px solid #fff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+#boss-health-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #CE1126, #ff5c6c);
+  transition: width 0.2s ease-out;
+}
+
+/* ================= Gem popup toast ================= */
+#gem-popup {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 640px;
+  background: rgba(10, 30, 20, 0.9);
+  border: 2px solid #FCD116;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  text-align: center;
+  pointer-events: none;
+  animation: popup-in 0.25s ease-out;
+}
+#gem-popup.hidden { display: none; }
+@keyframes popup-in {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ================= Screens (menus) ================= */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 30px;
+  color: #fff;
+  background: radial-gradient(ellipse at center, rgba(10,40,25,0.88) 0%, rgba(4,16,10,0.96) 100%);
+}
+.screen.hidden { display: none; }
+
+.title-flag-stripe {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 10px;
+  background: linear-gradient(90deg, #009E49 0 20%, #FCD116 20% 40%, #CE1126 40% 60%, #FCD116 60% 80%, #009E49 80% 100%);
+}
+
+#game-title {
+  font-size: 56px;
+  margin: 0;
+  letter-spacing: 4px;
+  color: #FCD116;
+  text-shadow: 3px 3px 0 #CE1126, 6px 6px 0 rgba(0,0,0,0.4);
+}
+#game-title span {
+  display: block;
+  color: #009E49;
+  font-size: 40px;
+  text-shadow: 2px 2px 0 #ffffff, 5px 5px 0 rgba(0,0,0,0.4);
+}
+
+.subtitle {
+  max-width: 560px;
+  font-size: 15px;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.big-button {
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: bold;
+  color: #123;
+  background: #FCD116;
+  border: 3px solid #fff;
+  border-radius: 10px;
+  padding: 12px 26px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #b6960b;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.big-button:hover { transform: translateY(-2px); box-shadow: 0 6px 0 #b6960b; }
+.big-button:active { transform: translateY(2px); box-shadow: 0 2px 0 #b6960b; }
+
+.controls-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  padding: 12px 20px;
+  margin-top: 4px;
+}
+
+.footnote {
+  font-size: 12px;
+  opacity: 0.75;
+  max-width: 520px;
+  margin: 0;
+}
+
+#screen-intro h2, #screen-boss-intro h2, .screen h2 {
+  font-size: 30px;
+  color: #FCD116;
+  margin: 0;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+}
+
+.boss-screen {
+  background: radial-gradient(ellipse at center, rgba(60,10,40,0.88) 0%, rgba(10,4,16,0.96) 100%);
+}
+
+.fact-text {
+  max-width: 620px;
+  font-size: 16px;
+  line-height: 1.5;
+  background: rgba(0,0,0,0.28);
+  border-radius: 8px;
+  padding: 14px 20px;
+}
+
+.hint {
+  font-size: 13px;
+  opacity: 0.8;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.screen h2.gameover-title { color: #ff5c6c; font-size: 40px; }
+.screen h2.victory-title { color: #FCD116; font-size: 32px; }

@@ -1,0 +1,776 @@
+/*
+  game.js
+  Main game loop, state machine (title, levelintro, playing, paused, bossintro,
+  boss, gameover, victory), camera, collisions, HUD, and all procedural
+  Canvas background rendering. Ties together entities.js, player.js, levels.js,
+  bosses.js and facts.js.
+*/
+
+const CANVAS_W = 960, CANVAS_H = 540;
+
+const CAMPAIGN = (() => {
+  const seq = [];
+  for (let i = 0; i < 10; i++) {
+    seq.push({ type: 'level', idx: i });
+    if ((i + 1) % 2 === 0) seq.push({ type: 'boss', idx: (i + 1) / 2 - 1 });
+  }
+  seq.push({ type: 'victory' });
+  return seq;
+})();
+
+const Game = {
+  canvas: null, ctx: null,
+  state: 'title',
+  campaignPos: 0,
+  lives: 3, score: 0,
+  unlockedBonusFacts: [],
+  currentLevel: null,
+  currentBossDef: null, bossState: null, bossDefeatTimer: 0,
+  player: null,
+  camera: { x: 0, y: 0 },
+  particles: [],
+  projectiles: [],
+  gemPopup: null,
+  keys: {}, prevKeys: {},
+  t: 0, lastTime: 0,
+  levelElapsed: 0,
+  introTimeout: null,
+  prevOnGround: false,
+  prevState: 'playing',
+};
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// ---------------- init ----------------
+window.addEventListener('load', init);
+
+function init() {
+  Game.canvas = document.getElementById('game-canvas');
+  Game.ctx = Game.canvas.getContext('2d');
+
+  window.addEventListener('keydown', (e) => {
+    Game.keys[e.code] = true;
+    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+    handleKeyAction(e.code);
+  });
+  window.addEventListener('keyup', (e) => { Game.keys[e.code] = false; });
+
+  const btnStart = document.getElementById('btn-start');
+  if (btnStart) btnStart.addEventListener('click', startNewRun);
+  const btnRetry = document.getElementById('btn-retry');
+  if (btnRetry) btnRetry.addEventListener('click', retryGame);
+  const btnAgain = document.getElementById('btn-playagain');
+  if (btnAgain) btnAgain.addEventListener('click', backToTitle);
+
+  setState('title');
+  requestAnimationFrame(loop);
+}
+
+function handleKeyAction(code) {
+  switch (Game.state) {
+    case 'title':
+      if (code === 'Space' || code === 'Enter') startNewRun();
+      break;
+    case 'levelintro':
+      clearTimeout(Game.introTimeout); dismissIntro();
+      break;
+    case 'bossintro':
+      clearTimeout(Game.introTimeout); dismissBossIntro();
+      break;
+    case 'playing':
+    case 'boss':
+      if (code === 'Escape' || code === 'KeyP') togglePause();
+      break;
+    case 'paused':
+      if (code === 'Escape' || code === 'KeyP') togglePause();
+      break;
+    case 'gameover':
+      if (code === 'Space' || code === 'Enter') retryGame();
+      break;
+    case 'victory':
+      if (code === 'Space' || code === 'Enter') backToTitle();
+      break;
+  }
+}
+
+// ---------------- state machine ----------------
+function setState(newState) {
+  Game.state = newState;
+  document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
+  const map = {
+    title: 'screen-title', levelintro: 'screen-intro', bossintro: 'screen-boss-intro',
+    paused: 'screen-pause', gameover: 'screen-gameover', victory: 'screen-victory',
+  };
+  if (map[newState]) document.getElementById(map[newState]).classList.remove('hidden');
+
+  const hud = document.getElementById('hud');
+  if (['playing', 'paused', 'boss', 'levelintro', 'bossintro'].includes(newState)) hud.classList.remove('hidden');
+  else hud.classList.add('hidden');
+
+  const bossWrap = document.getElementById('boss-health-wrap');
+  if (newState === 'boss') bossWrap.classList.remove('hidden'); else bossWrap.classList.add('hidden');
+}
+
+function togglePause() {
+  if (Game.state === 'playing' || Game.state === 'boss') {
+    Game.prevState = Game.state;
+    setState('paused');
+  } else if (Game.state === 'paused') {
+    setState(Game.prevState);
+  }
+}
+
+function startNewRun() {
+  Game.lives = 3;
+  Game.score = 0;
+  Game.unlockedBonusFacts = [];
+  loadStage(0);
+}
+function retryGame() { startNewRun(); }
+function backToTitle() { setState('title'); }
+
+function loadStage(pos) {
+  Game.campaignPos = pos;
+  const stage = CAMPAIGN[pos];
+  if (stage.type === 'level') loadLevel(stage.idx);
+  else if (stage.type === 'boss') loadBoss(stage.idx);
+  else if (stage.type === 'victory') showVictory();
+}
+function advanceCampaign() { loadStage(Game.campaignPos + 1); }
+
+// ---------------- level / boss loading ----------------
+function loadLevel(idx) {
+  const level = LEVEL_BUILDERS[idx]();
+  level.gemsCollected = 0;
+  level.checkpointReached = false;
+  level.checkpointPos = { x: level.playerStart.x, y: level.playerStart.y };
+  Game.currentLevel = level;
+  Game.currentBossDef = null; Game.bossState = null;
+  Game.player = new Player(level.playerStart.x, level.playerStart.y);
+  Game.camera = { x: 0, y: 0 };
+  Game.projectiles = []; Game.particles = []; Game.gemPopup = null;
+  Game.levelElapsed = 0;
+  Game.prevOnGround = false;
+  showLevelIntro(level, idx);
+}
+
+function showLevelIntro(level, idx) {
+  document.getElementById('intro-title').textContent = `Level ${level.id}: ${level.name}`;
+  document.getElementById('intro-fact').textContent = FACTS[idx].intro;
+  setState('levelintro');
+  clearTimeout(Game.introTimeout);
+  Game.introTimeout = setTimeout(dismissIntro, 4500);
+}
+function dismissIntro() { if (Game.state === 'levelintro') setState('playing'); }
+
+function loadBoss(idx) {
+  const def = BOSSES[idx];
+  Game.currentBossDef = def;
+  Game.bossState = def.init();
+  Game.currentLevel = null;
+  Game.player = new Player(100, ARENA_GROUND_Y - 46);
+  Game.camera = { x: 0, y: 0 };
+  Game.projectiles = []; Game.particles = []; Game.gemPopup = null;
+  Game.bossDefeatTimer = 0;
+  Game.prevOnGround = false;
+  showBossIntro(def, idx);
+}
+
+function showBossIntro(def, idx) {
+  document.getElementById('boss-intro-title').textContent = def.name;
+  document.getElementById('boss-intro-flavor').textContent = def.flavor + ' — ' + BOSS_FACTS[idx];
+  setState('bossintro');
+  clearTimeout(Game.introTimeout);
+  Game.introTimeout = setTimeout(dismissBossIntro, 5000);
+}
+function dismissBossIntro() { if (Game.state === 'bossintro') setState('boss'); }
+
+function showVictory() {
+  setState('victory');
+  document.getElementById('victory-score').textContent = `Final Score: ${Game.score}`;
+  const n = Game.unlockedBonusFacts.length;
+  document.getElementById('victory-facts').textContent =
+    `You learned ${n} bonus fact${n === 1 ? '' : 's'} about Guyana on your journey!`;
+}
+
+// ---------------- main loop ----------------
+function loop(ts) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.033, (ts - Game.lastTime) / 1000 || 0);
+  Game.lastTime = ts;
+  Game.t += dt;
+
+  if (Game.state === 'playing') updatePlaying(dt);
+  else if (Game.state === 'boss') updateBoss(dt);
+
+  render();
+  updateHUD();
+  Game.prevKeys = Object.assign({}, Game.keys);
+}
+
+function getInput() {
+  const k = Game.keys, pk = Game.prevKeys;
+  const jumpDown = !!(k['Space'] || k['ArrowUp'] || k['KeyW']);
+  const jumpDownPrev = !!(pk['Space'] || pk['ArrowUp'] || pk['KeyW']);
+  const swipeDown = !!(k['KeyX'] || k['ShiftLeft'] || k['ShiftRight']);
+  const swipeDownPrev = !!(pk['KeyX'] || pk['ShiftLeft'] || pk['ShiftRight']);
+  return {
+    left: !!(k['ArrowLeft'] || k['KeyA']),
+    right: !!(k['ArrowRight'] || k['KeyD']),
+    jump: jumpDown,
+    jumpJustPressed: jumpDown && !jumpDownPrev,
+    swipeJustPressed: swipeDown && !swipeDownPrev,
+  };
+}
+
+// ---------------- gameplay update ----------------
+function updatePlaying(dt) {
+  const level = Game.currentLevel, player = Game.player;
+  Game.levelElapsed += dt;
+
+  level.platforms.forEach((p) => p.update(dt, Game.t));
+  level.hazards.forEach((h) => h.update(dt, Game.t));
+
+  const world = { player, spawnProjectile: (p) => Game.projectiles.push(p) };
+  level.enemies.forEach((e) => e.update(dt, Game.t, world));
+
+  Game.projectiles.forEach((p) => p.update(dt));
+  Game.projectiles = Game.projectiles.filter((p) => !p.dead && p.life > 0);
+
+  player.update(dt, getInput(), level.platforms, Game.t);
+  if (player.onGround && !Game.prevOnGround) spawnDust(player.x + player.w / 2, player.y + player.h);
+  Game.prevOnGround = player.onGround;
+
+  // hazards (instant fail regardless of invincibility)
+  for (const hz of level.hazards) {
+    if (aabbOverlap(player, hz)) { killPlayerInstant(); break; }
+  }
+  if (player.y > level.groundY + 400) killPlayerInstant();
+
+  // enemies
+  for (const e of level.enemies) {
+    if (!e.alive) continue;
+    if (!aabbOverlap(player, e)) continue;
+    if (e.type === 'thief' && e.state === 'patrol') {
+      stealFromPlayer(e);
+      continue;
+    }
+    if (player.swipeTimer > 0 && aabbOverlap(player.swipeRect, e)) {
+      defeatEnemy(e);
+    } else if (player.vy > 0 && (player.y + player.h - e.y) < 22) {
+      defeatEnemy(e);
+      player.vy = -420;
+    } else {
+      hurtPlayerFromContact();
+    }
+  }
+
+  // collectibles
+  for (const c of level.collectibles) {
+    if (c.collected) continue;
+    if (aabbOverlap(player, c)) collectItem(c, level);
+  }
+
+  // projectiles vs player
+  for (const p of Game.projectiles) {
+    if (p.owner === 'player') continue;
+    if (aabbOverlap(player, p)) { hurtPlayerFromContact(); p.dead = true; }
+  }
+
+  // checkpoint
+  if (!level.checkpointReached && player.x >= level.checkpointX && player.onGround) {
+    level.checkpointReached = true;
+    level.checkpointPos = { x: player.x, y: player.y };
+    spawnBurst(player.x + player.w / 2, player.y, '#FCD116', 10);
+  }
+
+  // level end
+  if (player.x >= level.endX) completeLevel();
+
+  updateParticles(dt);
+  updateGemPopup(dt);
+}
+
+function updateBoss(dt) {
+  const def = Game.currentBossDef, boss = Game.bossState, player = Game.player;
+
+  def.arenaPlatforms.forEach((p) => p.update(dt, Game.t));
+  const world = { player, spawnProjectile: (p) => Game.projectiles.push(p) };
+  def.update(boss, dt, Game.t, world);
+
+  Game.projectiles.forEach((p) => p.update(dt));
+  Game.projectiles = Game.projectiles.filter((p) => !p.dead && p.life > 0);
+
+  player.update(dt, getInput(), def.arenaPlatforms, Game.t);
+  player.x = clamp(player.x, 10, ARENA_W - player.w - 10);
+  if (player.onGround && !Game.prevOnGround) spawnDust(player.x + player.w / 2, player.y + player.h);
+  Game.prevOnGround = player.onGround;
+
+  if (!boss.defeated) {
+    for (const r of def.getDangerRects(boss)) {
+      if (aabbOverlap(player, r)) { hurtPlayerFromContact(); break; }
+    }
+    for (const p of Game.projectiles) {
+      if (p.owner === 'player') continue;
+      if (aabbOverlap(player, p)) { hurtPlayerFromContact(); p.dead = true; }
+    }
+    const targets = def.getVulnerableTargets(boss);
+    for (const target of targets) {
+      if (player.swipeTimer > 0 && aabbOverlap(player.swipeRect, target)) {
+        def.onTargetHit(boss, target.id);
+        spawnBurst(target.x + target.w / 2, target.y + target.h / 2, '#FCD116', 10);
+        break;
+      } else if (player.vy > 0 && aabbOverlap(player, target) && (player.y + player.h - target.y) < 26) {
+        def.onTargetHit(boss, target.id);
+        player.vy = -420;
+        spawnBurst(target.x + target.w / 2, target.y + target.h / 2, '#FCD116', 10);
+        break;
+      }
+    }
+    for (const hz of (def.arenaHazards || [])) {
+      if (aabbOverlap(player, hz)) { killPlayerInstant(); break; }
+    }
+    if (player.y > ARENA_GROUND_Y + 300) killPlayerInstant();
+  }
+
+  if (boss.defeated) {
+    Game.bossDefeatTimer += dt;
+    if (Game.bossDefeatTimer > 1.6) {
+      Game.bossDefeatTimer = 0;
+      addScore(200);
+      advanceCampaign();
+      return;
+    }
+  }
+
+  updateParticles(dt);
+}
+
+// ---------------- gameplay helpers ----------------
+function addScore(n) { Game.score = Math.max(0, Game.score + n); }
+
+function defeatEnemy(e) {
+  const bonus = (e.type === 'thief' && e.hasItem) ? 60 : 30;
+  e.stomp();
+  addScore(bonus);
+  spawnBurst(e.x + e.w / 2, e.y + e.h / 2, '#ffffff', 8);
+}
+
+function stealFromPlayer(e) {
+  addScore(-20);
+  e.hasItem = true;
+  e.state = 'fleeing';
+  e.dir = (e.x < Game.player.x) ? -1 : 1;
+  spawnBurst(e.x + e.w / 2, e.y, '#ff8ad1', 6);
+}
+
+function collectItem(c, level) {
+  c.collected = true;
+  switch (c.type) {
+    case 'nugget': addScore(10); break;
+    case 'starapple': addScore(15); break;
+    case 'cassava': addScore(15); break;
+    case 'sugarcane': addScore(20); break;
+    case 'cutlass': Game.player.grantCutlass(); addScore(5); break;
+    case 'gem':
+    case 'firefly':
+      addScore(50);
+      level.gemsCollected = (level.gemsCollected || 0) + 1;
+      showGemFact(level);
+      break;
+  }
+  spawnSparkle(c.x + c.w / 2, c.y + c.h / 2);
+}
+
+function showGemFact(level) {
+  const idx = clamp(level.gemsCollected - 1, 0, 2);
+  const fact = FACTS[level.id - 1].bonus[idx];
+  Game.gemPopup = { text: fact, timer: 4.2 };
+  Game.unlockedBonusFacts.push(fact);
+}
+
+function updateGemPopup(dt) {
+  if (Game.gemPopup) {
+    Game.gemPopup.timer -= dt;
+    if (Game.gemPopup.timer <= 0) Game.gemPopup = null;
+  }
+}
+
+function hurtPlayerFromContact() {
+  if (!Game.player.takeHit()) return;
+  Game.lives--;
+  spawnBurst(Game.player.x + Game.player.w / 2, Game.player.y + Game.player.h / 2, '#CE1126', 10);
+  checkGameOverOrRespawn();
+}
+
+function killPlayerInstant() {
+  Game.lives--;
+  spawnBurst(Game.player.x + Game.player.w / 2, Game.player.y + Game.player.h / 2, '#1c6fbf', 12);
+  checkGameOverOrRespawn();
+}
+
+function checkGameOverOrRespawn() {
+  if (Game.lives <= 0) triggerGameOver();
+  else respawnPlayer();
+}
+
+function respawnPlayer() {
+  if (Game.state === 'boss' || Game.currentBossDef) {
+    Game.player.resetForCheckpoint(100, ARENA_GROUND_Y - 46);
+  } else if (Game.currentLevel) {
+    const pos = Game.currentLevel.checkpointReached ? Game.currentLevel.checkpointPos : Game.currentLevel.playerStart;
+    Game.player.resetForCheckpoint(pos.x, pos.y);
+  }
+}
+
+function triggerGameOver() {
+  setState('gameover');
+  document.getElementById('gameover-score').textContent = `Score: ${Game.score}`;
+}
+
+function completeLevel() {
+  const timeBonus = Math.max(0, Math.round((100 - Game.levelElapsed) * 3));
+  addScore(timeBonus);
+  advanceCampaign();
+}
+
+// ---------------- particles ----------------
+function spawnDust(x, y) {
+  for (let i = 0; i < 5; i++) {
+    Game.particles.push(new Particle({
+      x, y, vx: (Math.random() - 0.5) * 60, vy: -Math.random() * 40,
+      life: 0.35, color: '#e8d9b0', size: 2 + Math.random() * 2, gravity: 200,
+    }));
+  }
+  trimParticles();
+}
+function spawnSparkle(x, y) {
+  for (let i = 0; i < 8; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    Game.particles.push(new Particle({
+      x, y, vx: Math.cos(ang) * 70, vy: Math.sin(ang) * 70 - 30,
+      life: 0.5, color: '#FCD116', size: 2 + Math.random() * 2, gravity: 150,
+    }));
+  }
+  trimParticles();
+}
+function spawnBurst(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const spd = 60 + Math.random() * 120;
+    Game.particles.push(new Particle({
+      x, y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+      life: 0.5 + Math.random() * 0.3, color, size: 2 + Math.random() * 3, gravity: 260,
+    }));
+  }
+  trimParticles();
+}
+function trimParticles() {
+  if (Game.particles.length > 220) Game.particles.splice(0, Game.particles.length - 220);
+}
+function updateParticles(dt) {
+  Game.particles.forEach((p) => p.update(dt));
+  Game.particles = Game.particles.filter((p) => p.life > 0);
+}
+
+// ---------------- HUD ----------------
+function bossHealthFraction(def, boss) {
+  if (def.id === 5) {
+    const total = 6;
+    const done = (boss.phase - 1) * 2 + boss.phaseHits;
+    return clamp(1 - done / total, 0, 1);
+  }
+  return clamp(1 - boss.hitsTaken / boss.hitsRequired, 0, 1);
+}
+
+function updateHUD() {
+  if (!['playing', 'paused', 'boss', 'levelintro', 'bossintro'].includes(Game.state)) return;
+  document.getElementById('hud-lives').textContent = '❤'.repeat(Math.max(0, Game.lives)) + '♡'.repeat(Math.max(0, 3 - Game.lives));
+  document.getElementById('hud-score').textContent = `Score: ${Game.score}`;
+  const lvlNameEl = document.getElementById('hud-level');
+  const gemsEl = document.getElementById('hud-gems');
+  if (Game.currentLevel) {
+    lvlNameEl.textContent = `${Game.currentLevel.id}. ${Game.currentLevel.name}`;
+    gemsEl.textContent = `Gems: ${Game.currentLevel.gemsCollected || 0}/3`;
+    gemsEl.classList.remove('hidden');
+  } else if (Game.currentBossDef) {
+    lvlNameEl.textContent = `Boss Fight: ${Game.currentBossDef.name}`;
+    gemsEl.classList.add('hidden');
+  }
+  if (Game.state === 'boss' && Game.currentBossDef && Game.bossState) {
+    document.getElementById('boss-name').textContent = Game.currentBossDef.name;
+    const frac = bossHealthFraction(Game.currentBossDef, Game.bossState);
+    document.getElementById('boss-health-fill').style.width = `${frac * 100}%`;
+  }
+  const gp = document.getElementById('gem-popup');
+  if (Game.gemPopup) {
+    gp.textContent = '💎 ' + Game.gemPopup.text;
+    gp.classList.remove('hidden');
+  } else {
+    gp.classList.add('hidden');
+  }
+}
+
+// ---------------- render ----------------
+function render() {
+  const ctx = Game.ctx;
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+  if (Game.state === 'title') {
+    drawBackground(ctx, LEVELS[0], { x: Game.t * 12, y: 0 }, Game.t);
+    return;
+  }
+  if (['levelintro', 'playing', 'paused'].includes(Game.state) && Game.currentLevel) {
+    renderLevel();
+    return;
+  }
+  if (['bossintro', 'boss'].includes(Game.state) && Game.currentBossDef) {
+    renderBoss();
+    return;
+  }
+  ctx.fillStyle = '#12210f';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+}
+
+function renderLevel() {
+  const ctx = Game.ctx, level = Game.currentLevel, player = Game.player;
+  Game.camera.x = clamp(player.x - CANVAS_W / 2 + player.w / 2, 0, Math.max(0, level.width - CANVAS_W));
+  Game.camera.y = 0;
+
+  drawBackground(ctx, level, Game.camera, Game.t);
+  level.hazards.forEach((h) => h.draw(ctx, Game.camera, Game.t));
+  level.platforms.forEach((p) => p.draw(ctx, Game.camera));
+  level.collectibles.forEach((c) => c.draw(ctx, Game.camera, Game.t));
+  level.enemies.forEach((e) => e.draw(ctx, Game.camera, Game.t));
+  Game.projectiles.forEach((p) => p.draw(ctx, Game.camera));
+  player.draw(ctx, Game.camera, Game.t);
+  Game.particles.forEach((p) => p.draw(ctx, Game.camera));
+  drawFlag(ctx, level.endX, level.groundY, Game.camera);
+}
+
+function renderBoss() {
+  const ctx = Game.ctx, def = Game.currentBossDef, boss = Game.bossState;
+  const camera = { x: 0, y: 0 };
+  drawBossBackground(ctx, def, Game.t);
+  def.arenaPlatforms.forEach((p) => p.draw(ctx, camera));
+  if (def.arenaHazards) def.arenaHazards.forEach((h) => h.draw(ctx, camera, Game.t));
+  def.draw(ctx, boss, camera, Game.t);
+  Game.projectiles.forEach((p) => p.draw(ctx, camera));
+  Game.player.draw(ctx, camera, Game.t);
+  Game.particles.forEach((p) => p.draw(ctx, camera));
+}
+
+function drawFlag(ctx, x, groundY, camera) {
+  const sx = x - camera.x;
+  if (sx < -40 || sx > 1000) return;
+  ctx.save();
+  ctx.strokeStyle = '#e8e8e8';
+  ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(sx, groundY); ctx.lineTo(sx, groundY - 130); ctx.stroke();
+  ctx.fillStyle = '#009E49';
+  ctx.beginPath(); ctx.moveTo(sx, groundY - 130); ctx.lineTo(sx + 46, groundY - 112); ctx.lineTo(sx, groundY - 94); ctx.fill();
+  ctx.fillStyle = '#FCD116';
+  ctx.beginPath(); ctx.arc(sx, groundY - 130, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// ---------------- backgrounds ----------------
+function drawBackground(ctx, level, camera, t) {
+  const p = level.palette;
+  const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+  grad.addColorStop(0, p.sky1);
+  grad.addColorStop(1, p.sky2);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  const sunX = 800 - (camera.x * 0.04) % 900;
+  if (level.night) {
+    ctx.fillStyle = '#eef0ff';
+    ctx.beginPath(); ctx.arc(sunX, 90, 28, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 50; i++) {
+      const sxr = (i * 137 - camera.x * 0.08) % 1000;
+      const sx2 = sxr < 0 ? sxr + 1000 : sxr;
+      const sy2 = (i * 71) % 260 + 10;
+      ctx.globalAlpha = 0.35 + 0.5 * Math.abs(Math.sin(t * 2 + i));
+      ctx.fillRect(sx2, sy2, 2, 2);
+    }
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.fillStyle = '#FCD116';
+    ctx.beginPath(); ctx.arc(sunX, 85, 36, 0, Math.PI * 2); ctx.fill();
+  }
+
+  drawParallaxLayer(ctx, camera, 0.15, 380, 55, p.accent2, 0.35);
+  drawParallaxLayer(ctx, camera, 0.32, 415, 75, p.accent, 0.4);
+
+  drawThemeDecor(ctx, level, camera, t);
+
+  if (level.night) {
+    ctx.fillStyle = 'rgba(5,8,24,0.32)';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  }
+}
+
+function drawParallaxLayer(ctx, camera, factor, baseY, amp, color, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0, CANVAS_H);
+  const off = camera.x * factor;
+  for (let x = -40; x <= CANVAS_W + 40; x += 40) {
+    const worldX = x + off;
+    const y = baseY - Math.sin(worldX * 0.006) * amp - Math.sin(worldX * 0.013 + 1) * amp * 0.4;
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(CANVAS_W + 40, CANVAS_H);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function repeatWorld(camera, spacing, levelWidth, fn) {
+  const w = levelWidth || 4000;
+  const start = Math.floor(camera.x / spacing) * spacing - spacing;
+  for (let wx = start; wx < camera.x + CANVAS_W + spacing; wx += spacing) {
+    if (wx < -spacing || wx > w + spacing) continue;
+    fn(wx - camera.x, wx);
+  }
+}
+
+function drawThemeDecor(ctx, level, camera, t) {
+  const p = level.palette;
+  ctx.save();
+  switch (level.theme) {
+    case 'market':
+      repeatWorld(camera, 260, level.width, (sx, wx) => {
+        ctx.fillStyle = '#e8e8e8';
+        ctx.fillRect(sx - 20, 300, 40, 4);
+        ctx.fillStyle = wx % 520 === 0 ? '#CE1126' : '#009E49';
+        ctx.beginPath();
+        ctx.moveTo(sx - 24, 300); ctx.lineTo(sx, 270); ctx.lineTo(sx + 24, 300); ctx.fill();
+      });
+      repeatWorld(camera, 400, level.width, (sx, wx) => {
+        const ky = 120 + Math.sin(t + wx) * 15;
+        ctx.strokeStyle = '#8a8a8a'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(sx, ky); ctx.lineTo(sx - 30, level.groundY - 40); ctx.stroke();
+        ctx.fillStyle = '#FCD116';
+        ctx.beginPath(); ctx.moveTo(sx, ky - 12); ctx.lineTo(sx + 10, ky); ctx.lineTo(sx, ky + 12); ctx.lineTo(sx - 10, ky); ctx.fill();
+      });
+      break;
+    case 'river':
+      repeatWorld(camera, 500, level.width, (sx) => {
+        ctx.fillStyle = '#7a5230';
+        ctx.fillRect(sx - 40, 250, 80, 24);
+        ctx.fillStyle = '#e8e8e8';
+        ctx.fillRect(sx - 4, 210, 8, 40);
+        ctx.fillStyle = '#CE1126';
+        ctx.beginPath(); ctx.moveTo(sx - 4, 210); ctx.lineTo(sx + 22, 220); ctx.lineTo(sx - 4, 230); ctx.fill();
+      });
+      break;
+    case 'mangrove':
+      repeatWorld(camera, 220, level.width, (sx) => {
+        ctx.strokeStyle = '#2e4a1e'; ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(sx, level.groundY);
+        ctx.lineTo(sx - 14, level.groundY + 20);
+        ctx.moveTo(sx, level.groundY);
+        ctx.lineTo(sx + 14, level.groundY + 20);
+        ctx.stroke();
+        ctx.fillStyle = '#3fa34d';
+        ctx.beginPath(); ctx.arc(sx, level.groundY - 30, 22, 0, Math.PI * 2); ctx.fill();
+      });
+      break;
+    case 'canopy':
+      repeatWorld(camera, 180, level.width, (sx, wx) => {
+        const ly = 80 + Math.sin(wx * 0.02) * 30;
+        ctx.fillStyle = '#2f6b3a';
+        ctx.beginPath(); ctx.arc(sx, ly, 46, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#3f8b4a';
+        ctx.beginPath(); ctx.arc(sx + 20, ly + 10, 30, 0, Math.PI * 2); ctx.fill();
+      });
+      break;
+    case 'falls':
+      repeatWorld(camera, 900, level.width, (sx) => {
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        for (let i = 0; i < 6; i++) {
+          ctx.fillRect(sx - 60 + i * 20, 0, 6, 540);
+        }
+      });
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      break;
+    case 'savannah':
+      repeatWorld(camera, 260, level.width, (sx, wx) => {
+        ctx.fillStyle = level.night ? 'rgba(10,20,10,0.7)' : '#6b8a4a';
+        ctx.beginPath();
+        ctx.ellipse(sx, level.groundY - 8, 34, 14, 0, 0, Math.PI * 2); ctx.fill();
+        if (wx % 780 === 0) {
+          ctx.fillStyle = 'rgba(10,10,10,0.55)';
+          ctx.fillRect(sx - 26, level.groundY - 50, 40, 24);
+          ctx.beginPath(); ctx.moveTo(sx - 30, level.groundY - 50); ctx.lineTo(sx - 18, level.groundY - 66); ctx.lineTo(sx - 6, level.groundY - 50); ctx.fill();
+        }
+      });
+      break;
+    case 'mining':
+      repeatWorld(camera, 420, level.width, (sx) => {
+        ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(sx - 26, level.groundY); ctx.lineTo(sx, 190); ctx.lineTo(sx + 26, level.groundY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sx - 14, level.groundY - 60); ctx.lineTo(sx + 14, level.groundY - 60); ctx.stroke();
+      });
+      break;
+    case 'camp':
+      repeatWorld(camera, 500, level.width, (sx) => {
+        ctx.fillStyle = '#c9ab6a';
+        ctx.beginPath(); ctx.moveTo(sx - 24, level.groundY); ctx.lineTo(sx, level.groundY - 46); ctx.lineTo(sx + 24, level.groundY); ctx.fill();
+        ctx.fillStyle = '#ff9a2e';
+        ctx.beginPath(); ctx.arc(sx + 80, level.groundY - 8, 8 + Math.sin(t * 6) * 2, 0, Math.PI * 2); ctx.fill();
+      });
+      break;
+    case 'beach':
+      repeatWorld(camera, 240, level.width, (sx) => {
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(sx, level.groundY + 30, 30, Math.PI, Math.PI * 2); ctx.stroke();
+      });
+      break;
+    case 'mountains':
+      repeatWorld(camera, 480, level.width, (sx) => {
+        ctx.fillStyle = '#8fa87f';
+        ctx.beginPath(); ctx.moveTo(sx - 90, level.groundY); ctx.lineTo(sx, 140); ctx.lineTo(sx + 90, level.groundY); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.moveTo(sx - 16, 170); ctx.lineTo(sx, 140); ctx.lineTo(sx + 16, 170); ctx.fill();
+      });
+      break;
+  }
+  ctx.restore();
+}
+
+function drawBossBackground(ctx, def, t) {
+  const themes = {
+    1: ['#3a2050', '#8a4a6a'],
+    2: ['#0e3a4a', '#1c6fbf'],
+    3: ['#05081a', '#1a2350'],
+    4: ['#1e3a1e', '#3a6b3a'],
+    5: ['#4a2a1a', '#c96a3a'],
+  };
+  const [c1, c2] = themes[def.id] || ['#222', '#444'];
+  const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+  grad.addColorStop(0, c1); grad.addColorStop(1, c2);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  if (def.id === 3) {
+    ctx.fillStyle = '#eef0ff';
+    ctx.beginPath(); ctx.arc(760, 100, 50, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 60; i++) {
+      ctx.globalAlpha = 0.3 + 0.5 * Math.abs(Math.sin(t * 2 + i));
+      ctx.fillRect((i * 91) % 960, (i * 53) % 300, 2, 2);
+    }
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.beginPath(); ctx.arc(150, 90, 40, 0, Math.PI * 2); ctx.fill();
+  }
+}

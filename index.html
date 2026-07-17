@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guyana Quest</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game-container">
+  <canvas id="game-canvas" width="960" height="540"></canvas>
+
+  <!-- ============ HUD (always visible during gameplay states) ============ -->
+  <div id="hud" class="hidden">
+    <div id="hud-left">
+      <div id="hud-lives">❤❤❤</div>
+      <div id="hud-level">Guyana Quest</div>
+    </div>
+    <div id="hud-right">
+      <div id="hud-score">Score: 0</div>
+      <div id="hud-gems">Gems: 0/3</div>
+    </div>
+    <div id="boss-health-wrap" class="hidden">
+      <div id="boss-name">Boss</div>
+      <div id="boss-health-bar"><div id="boss-health-fill"></div></div>
+    </div>
+  </div>
+
+  <div id="gem-popup" class="hidden"></div>
+
+  <!-- ============ Title screen ============ -->
+  <div id="screen-title" class="screen">
+    <div class="title-flag-stripe"></div>
+    <h1 id="game-title">GUYANA<span>QUEST</span></h1>
+    <p class="subtitle">A journey across Guyana, from Stabroek Market to the Kanuku Mountains</p>
+    <button id="btn-start" class="big-button">Press SPACE to Start</button>
+    <div class="controls-hint">
+      <div><strong>Move:</strong> ◀ ▶ or A / D</div>
+      <div><strong>Jump:</strong> Space, ▲, or W (tap for a hop, hold for a big jump)</div>
+      <div><strong>Cutlass Swipe:</strong> X or Shift (once you find a cutlass!)</div>
+      <div><strong>Pause:</strong> Esc or P</div>
+    </div>
+    <p class="footnote">Stomp enemies from above, collect Guyana treasures, and defeat 5 legendary folklore bosses!</p>
+  </div>
+
+  <!-- ============ Level intro card ============ -->
+  <div id="screen-intro" class="screen hidden">
+    <h2 id="intro-title">Level</h2>
+    <p id="intro-fact" class="fact-text"></p>
+    <p class="hint">Press any key to continue</p>
+  </div>
+
+  <!-- ============ Boss intro card ============ -->
+  <div id="screen-boss-intro" class="screen hidden boss-screen">
+    <h2 id="boss-intro-title">Boss</h2>
+    <p id="boss-intro-flavor" class="fact-text"></p>
+    <p class="hint">Press any key to begin the fight</p>
+  </div>
+
+  <!-- ============ Pause screen ============ -->
+  <div id="screen-pause" class="screen hidden">
+    <h2>Paused</h2>
+    <p class="hint">Press Esc or P to resume</p>
+  </div>
+
+  <!-- ============ Game over screen ============ -->
+  <div id="screen-gameover" class="screen hidden">
+    <h2 class="gameover-title">Game Over</h2>
+    <p id="gameover-score" class="fact-text">Score: 0</p>
+    <button id="btn-retry" class="big-button">Press SPACE to Retry</button>
+  </div>
+
+  <!-- ============ Victory screen ============ -->
+  <div id="screen-victory" class="screen hidden">
+    <h2 class="victory-title">You Saved Guyana's Legends!</h2>
+    <p class="fact-text">You journeyed from Georgetown to the Kanuku Mountains and bested Ole Higue, Massacoraman, Moongazer, Baccoo, and Kanaima himself.</p>
+    <p id="victory-score" class="fact-text">Final Score: 0</p>
+    <p id="victory-facts" class="fact-text"></p>
+    <button id="btn-playagain" class="big-button">Press SPACE for Title Screen</button>
+  </div>
+
+</div>
+
+<script src="js/entities.js"></script>
+<script src="js/facts.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/bosses.js"></script>
+<script src="js/player.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
