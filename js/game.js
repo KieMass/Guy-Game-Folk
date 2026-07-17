@@ -259,8 +259,10 @@ function showBossIntro(def, idx) {
   document.getElementById('boss-intro-flavor').textContent = def.flavor + ' — ' + pickRandom(BOSS_FACTS[idx]);
   document.getElementById('boss-intro-tip').textContent = def.tip ? `💡 Tip: ${def.tip}` : '';
   setState('bossintro');
+  // No auto-dismiss timer here (unlike the level intro card) -- the boss tip
+  // is longer, so the player reads it at their own pace and advances with a
+  // key press or tap, via handleKeyAction / the click listener on the card.
   clearTimeout(Game.introTimeout);
-  Game.introTimeout = setTimeout(dismissBossIntro, 5000);
 }
 function dismissBossIntro() { if (Game.state === 'bossintro') setState('boss'); }
 
