@@ -24,6 +24,7 @@ const Game = {
   campaignPos: 0,
   lives: 3, score: 0,
   unlockedBonusFacts: [],
+  treasureCount: 0,
   currentLevel: null,
   currentBossDef: null, bossState: null, bossDefeatTimer: 0,
   player: null,
@@ -31,6 +32,7 @@ const Game = {
   particles: [],
   projectiles: [],
   gemPopup: null,
+  toast: null,
   keys: {}, prevKeys: {},
   t: 0, lastTime: 0,
   levelElapsed: 0,
@@ -40,6 +42,15 @@ const Game = {
 };
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 // ---------------- init ----------------
 window.addEventListener('load', init);
@@ -129,6 +140,8 @@ function startNewRun() {
   Game.lives = 3;
   Game.score = 0;
   Game.unlockedBonusFacts = [];
+  Game.treasureCount = 0;
+  Game.toast = null;
   loadStage(0);
 }
 function retryGame() { startNewRun(); }
@@ -149,11 +162,12 @@ function loadLevel(idx) {
   level.gemsCollected = 0;
   level.checkpointReached = false;
   level.checkpointPos = { x: level.playerStart.x, y: level.playerStart.y };
+  level.bonusFactPool = shuffle(FACTS[idx].bonus);
   Game.currentLevel = level;
   Game.currentBossDef = null; Game.bossState = null;
   Game.player = new Player(level.playerStart.x, level.playerStart.y);
   Game.camera = { x: 0, y: 0 };
-  Game.projectiles = []; Game.particles = []; Game.gemPopup = null;
+  Game.projectiles = []; Game.particles = []; Game.gemPopup = null; Game.toast = null;
   Game.levelElapsed = 0;
   Game.prevOnGround = false;
   showLevelIntro(level, idx);
@@ -161,7 +175,7 @@ function loadLevel(idx) {
 
 function showLevelIntro(level, idx) {
   document.getElementById('intro-title').textContent = `Level ${level.id}: ${level.name}`;
-  document.getElementById('intro-fact').textContent = FACTS[idx].intro;
+  document.getElementById('intro-fact').textContent = pickRandom(FACTS[idx].intro);
   setState('levelintro');
   clearTimeout(Game.introTimeout);
   Game.introTimeout = setTimeout(dismissIntro, 4500);
@@ -175,7 +189,7 @@ function loadBoss(idx) {
   Game.currentLevel = null;
   Game.player = new Player(100, ARENA_GROUND_Y - 46);
   Game.camera = { x: 0, y: 0 };
-  Game.projectiles = []; Game.particles = []; Game.gemPopup = null;
+  Game.projectiles = []; Game.particles = []; Game.gemPopup = null; Game.toast = null;
   Game.bossDefeatTimer = 0;
   Game.prevOnGround = false;
   showBossIntro(def, idx);
@@ -183,7 +197,7 @@ function loadBoss(idx) {
 
 function showBossIntro(def, idx) {
   document.getElementById('boss-intro-title').textContent = def.name;
-  document.getElementById('boss-intro-flavor').textContent = def.flavor + ' — ' + BOSS_FACTS[idx];
+  document.getElementById('boss-intro-flavor').textContent = def.flavor + ' — ' + pickRandom(BOSS_FACTS[idx]);
   setState('bossintro');
   clearTimeout(Game.introTimeout);
   Game.introTimeout = setTimeout(dismissBossIntro, 5000);
@@ -256,13 +270,18 @@ function updatePlaying(dt) {
   for (const e of level.enemies) {
     if (!e.alive) continue;
     if (!aabbOverlap(player, e)) continue;
+    if (player.starPowerTimer > 0) {
+      // star power plows through anything on contact, thieves included
+      defeatEnemy(e);
+      continue;
+    }
     if (e.type === 'thief' && e.state === 'patrol') {
       stealFromPlayer(e);
       continue;
     }
     if (player.swipeTimer > 0 && aabbOverlap(player.swipeRect, e)) {
       defeatEnemy(e);
-    } else if (player.vy > 0 && (player.y + player.h - e.y) < 22) {
+    } else if (player.vy > 0 && (player.y + player.h - e.y) < 22 && e.stompable !== false) {
       defeatEnemy(e);
       player.vy = -420;
     } else {
@@ -294,6 +313,7 @@ function updatePlaying(dt) {
 
   updateParticles(dt);
   updateGemPopup(dt);
+  updateToast(dt);
 }
 
 function updateBoss(dt) {
@@ -349,6 +369,7 @@ function updateBoss(dt) {
   }
 
   updateParticles(dt);
+  updateToast(dt);
 }
 
 // ---------------- gameplay helpers ----------------
@@ -369,6 +390,10 @@ function stealFromPlayer(e) {
   spawnBurst(e.x + e.w / 2, e.y, '#ff8ad1', 6);
 }
 
+const TREASURE_TYPES = ['nugget', 'starapple', 'cassava', 'sugarcane'];
+const TREASURE_LIFE_THRESHOLD = 100;
+const MAX_LIVES = 6;
+
 function collectItem(c, level) {
   c.collected = true;
   switch (c.type) {
@@ -376,7 +401,24 @@ function collectItem(c, level) {
     case 'starapple': addScore(15); break;
     case 'cassava': addScore(15); break;
     case 'sugarcane': addScore(20); break;
-    case 'cutlass': Game.player.grantCutlass(); addScore(5); break;
+    case 'cutlass':
+      Game.player.grantCutlass(); addScore(5);
+      showToast('Cutlass! Press X / Shift to swipe');
+      break;
+    case 'starpower':
+      Game.player.grantStarPower(); addScore(20);
+      showToast('Star Power! Touch enemies to defeat them');
+      break;
+    case 'speedboost':
+      Game.player.grantSpeedBoost(); addScore(20);
+      showToast('Speed Boost!');
+      break;
+    case 'extralife':
+      Game.lives = Math.min(MAX_LIVES, Game.lives + 1);
+      addScore(100);
+      showToast('Extra Life!');
+      spawnBurst(c.x + c.w / 2, c.y + c.h / 2, '#ff3355', 12);
+      break;
     case 'gem':
     case 'firefly':
       addScore(50);
@@ -384,12 +426,20 @@ function collectItem(c, level) {
       showGemFact(level);
       break;
   }
+  if (TREASURE_TYPES.includes(c.type)) {
+    Game.treasureCount++;
+    if (Game.treasureCount % TREASURE_LIFE_THRESHOLD === 0) {
+      Game.lives = Math.min(MAX_LIVES, Game.lives + 1);
+      showToast(`${TREASURE_LIFE_THRESHOLD} Treasures — Extra Life!`, 3.2);
+      spawnBurst(Game.player.x + Game.player.w / 2, Game.player.y, '#ff3355', 14);
+    }
+  }
   spawnSparkle(c.x + c.w / 2, c.y + c.h / 2);
 }
 
 function showGemFact(level) {
-  const idx = clamp(level.gemsCollected - 1, 0, 2);
-  const fact = FACTS[level.id - 1].bonus[idx];
+  const idx = clamp(level.gemsCollected - 1, 0, level.bonusFactPool.length - 1);
+  const fact = level.bonusFactPool[idx];
   Game.gemPopup = { text: fact, timer: 4.2 };
   Game.unlockedBonusFacts.push(fact);
 }
@@ -398,6 +448,17 @@ function updateGemPopup(dt) {
   if (Game.gemPopup) {
     Game.gemPopup.timer -= dt;
     if (Game.gemPopup.timer <= 0) Game.gemPopup = null;
+  }
+}
+
+function showToast(text, duration) {
+  Game.toast = { text, timer: duration || 2.4 };
+}
+
+function updateToast(dt) {
+  if (Game.toast) {
+    Game.toast.timer -= dt;
+    if (Game.toast.timer <= 0) Game.toast = null;
   }
 }
 
@@ -513,6 +574,28 @@ function updateHUD() {
     gp.classList.remove('hidden');
   } else {
     gp.classList.add('hidden');
+  }
+
+  const toastEl = document.getElementById('toast-popup');
+  if (Game.toast) {
+    toastEl.textContent = Game.toast.text;
+    toastEl.classList.remove('hidden');
+  } else {
+    toastEl.classList.add('hidden');
+  }
+
+  const puEl = document.getElementById('hud-powerups');
+  if (Game.player) {
+    const pu = [];
+    if (Game.player.hasCutlass) pu.push(`🗡${Math.ceil(Game.player.cutlassTimer)}s`);
+    if (Game.player.starPowerTimer > 0) pu.push(`⭐${Math.ceil(Game.player.starPowerTimer)}s`);
+    if (Game.player.speedBoostTimer > 0) pu.push(`⚡${Math.ceil(Game.player.speedBoostTimer)}s`);
+    if (pu.length) {
+      puEl.textContent = pu.join('  ');
+      puEl.classList.remove('hidden');
+    } else {
+      puEl.classList.add('hidden');
+    }
   }
 }
 

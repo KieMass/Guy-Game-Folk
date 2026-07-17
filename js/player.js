@@ -24,6 +24,8 @@ class Player {
     this.invincible = 0;
     this.hasCutlass = false;
     this.cutlassTimer = 0;
+    this.starPowerTimer = 0;
+    this.speedBoostTimer = 0;
     this.swipeTimer = 0;
     this.swipeCooldown = 0;
     this.standingOn = null;
@@ -40,12 +42,14 @@ class Player {
   }
 
   takeHit() {
-    if (this.invincible > 0) return false;
+    if (this.invincible > 0 || this.starPowerTimer > 0) return false;
     this.invincible = 1.7;
     return true;
   }
 
   grantCutlass() { this.hasCutlass = true; this.cutlassTimer = 14; }
+  grantStarPower() { this.starPowerTimer = 8; }
+  grantSpeedBoost() { this.speedBoostTimer = 8; }
 
   resetForCheckpoint(x, y) {
     this.x = x; this.y = y; this.vx = 0; this.vy = 0;
@@ -57,15 +61,18 @@ class Player {
     this.invincible = Math.max(0, this.invincible - dt);
     this.swipeTimer = Math.max(0, this.swipeTimer - dt);
     this.swipeCooldown = Math.max(0, this.swipeCooldown - dt);
+    this.starPowerTimer = Math.max(0, this.starPowerTimer - dt);
+    this.speedBoostTimer = Math.max(0, this.speedBoostTimer - dt);
     if (this.hasCutlass) {
       this.cutlassTimer -= dt;
       if (this.cutlassTimer <= 0) this.hasCutlass = false;
     }
 
     // horizontal movement: only moves while a direction is actively held
+    const maxSpeed = this.speedBoostTimer > 0 ? MAX_RUN_SPEED * 1.4 : MAX_RUN_SPEED;
     let target = 0;
-    if (input.right) target = MAX_RUN_SPEED;
-    else if (input.left) target = -MAX_RUN_SPEED;
+    if (input.right) target = maxSpeed;
+    else if (input.left) target = -maxSpeed;
     const accel = this.onGround ? (target === 0 ? 1900 : 1500) : 900;
     if (this.vx < target) this.vx = Math.min(target, this.vx + accel * dt);
     else if (this.vx > target) this.vx = Math.max(target, this.vx - accel * dt);
@@ -240,6 +247,29 @@ class Player {
     const facing = this.facing;
     const speedRatio = Math.max(0, Math.min(1, Math.abs(this.vx) / MAX_RUN_SPEED));
 
+    if (this.speedBoostTimer > 0 && Math.abs(this.vx) > 20) {
+      ctx.strokeStyle = 'rgba(58,214,255,0.55)';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        const off = 8 + i * 8;
+        ctx.beginPath();
+        ctx.moveTo(cx - facing * (this.w / 2 + off), sy + 12 + i * 9);
+        ctx.lineTo(cx - facing * (this.w / 2 + off + 13), sy + 12 + i * 9);
+        ctx.stroke();
+      }
+    }
+    if (this.starPowerTimer > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.55 + Math.sin(t * 10) * 0.2;
+      ctx.strokeStyle = `hsl(${(t * 260) % 360},90%,60%)`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, sy + this.h / 2, this.h * 0.68, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     let squat = 0, lean = 0;
     if (this.state === 'run') { lean = facing * 3 * speedRatio; }
     else if (this.state === 'jump') { squat = -3; lean = facing * 2; }
@@ -255,7 +285,7 @@ class Player {
     this._drawLeg(ctx, cx + 4, hipY, legPhase + Math.PI, 1, facing);
 
     // torso (softly rounded silhouette, flat cartoon shading)
-    ctx.fillStyle = '#009E49';
+    ctx.fillStyle = this.starPowerTimer > 0 ? `hsl(${(t * 300) % 360},80%,55%)` : '#009E49';
     const tw = this.w - 8, th = this.h - 27;
     const tx = cx - tw / 2 + lean * 0.4;
     ctx.beginPath();

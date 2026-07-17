@@ -244,6 +244,60 @@ class Collectible {
         ctx.lineWidth = 5;
         ctx.beginPath(); ctx.moveTo(cx - 8, cy + 10); ctx.lineTo(cx - 13, cy + 15); ctx.stroke();
         break;
+      case 'extralife': {
+        // a bright heart charm -- the "1-up" of Guyana Quest
+        ctx.shadowColor = '#ff3355';
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = '#ff3355';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + 10);
+        ctx.bezierCurveTo(cx - 15, cy - 2, cx - 9, cy - 13, cx, cy - 5);
+        ctx.bezierCurveTo(cx + 9, cy - 13, cx + 15, cy - 2, cx, cy + 10);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('+1', cx, cy + 2);
+        break;
+      }
+      case 'starpower': {
+        // spinning golden star -- temporary invincibility
+        const spin = t * 3;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(spin);
+        ctx.shadowColor = '#FCD116';
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = '#FCD116';
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+          const ang = -Math.PI / 2 + i * (Math.PI * 2 / 5);
+          const ang2 = ang + Math.PI / 5;
+          ctx.lineTo(Math.cos(ang) * 12, Math.sin(ang) * 12);
+          ctx.lineTo(Math.cos(ang2) * 5, Math.sin(ang2) * 5);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        break;
+      }
+      case 'speedboost': {
+        // cyan chevron swoosh -- temporary speed boost
+        ctx.shadowColor = '#3ad6ff';
+        ctx.shadowBlur = 12;
+        ctx.strokeStyle = '#3ad6ff';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 2; i++) {
+          const ox = -6 + i * 8;
+          ctx.beginPath();
+          ctx.moveTo(cx + ox - 6, cy - 9);
+          ctx.lineTo(cx + ox + 4, cy);
+          ctx.lineTo(cx + ox - 6, cy + 9);
+          ctx.stroke();
+        }
+        break;
+      }
     }
     ctx.restore();
   }
@@ -304,6 +358,39 @@ class Projectile {
     }
     ctx.restore();
   }
+}
+
+// Procedural walk-cycle legs shared by ground creatures: bent thigh/shin
+// segments that swing and fold like the player's, scaled to a small body.
+function drawCreatureLegs(ctx, cx, footBaseY, halfW, legReach, phase, color, pairCount, moving) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(2, halfW * 0.22);
+  ctx.lineCap = 'round';
+  const hipY = footBaseY - legReach;
+  const thigh = legReach * 0.55, shin = legReach * 0.55;
+  const pairOffsets = pairCount === 2 ? [-halfW * 0.5, halfW * 0.5] : [0];
+  pairOffsets.forEach((offsetX, pairIdx) => {
+    for (let side = -1; side <= 1; side += 2) {
+      let hipAngle, kneeBend;
+      if (moving) {
+        const p = phase + (side > 0 ? Math.PI : 0) + pairIdx * Math.PI * 0.85;
+        hipAngle = Math.sin(p) * 0.6;
+        kneeBend = 0.22 + Math.max(0, -hipAngle) * 1.3;
+      } else {
+        hipAngle = side * 0.05;
+        kneeBend = 0.3;
+      }
+      const hipX = cx + offsetX + side * halfW * 0.3;
+      const kneeX = hipX + Math.sin(hipAngle) * thigh;
+      const kneeY = hipY + Math.cos(hipAngle) * thigh;
+      const shinAngle = hipAngle + kneeBend;
+      const footX = kneeX + Math.sin(shinAngle) * shin;
+      const footY = kneeY + Math.cos(shinAngle) * shin;
+      ctx.beginPath();
+      ctx.moveTo(hipX, hipY); ctx.lineTo(kneeX, kneeY); ctx.lineTo(footX, footY);
+      ctx.stroke();
+    }
+  });
 }
 
 // ---------- Enemy ----------
@@ -423,19 +510,17 @@ class Enemy {
 
     const cx = sx + this.w / 2, cy = sy + this.h / 2;
     switch (this.type) {
-      case 'crawler':
+      case 'crawler': {
+        const legPhase = t * 9 + this.startX * 0.03;
+        drawCreatureLegs(ctx, cx, cy + this.h / 2, this.w / 2, Math.max(6, this.h * 0.45), legPhase, this.color, 2, true);
         ctx.fillStyle = this.color;
         ctx.beginPath(); ctx.ellipse(cx, cy, this.w / 2, this.h / 2, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fff';
         ctx.beginPath(); ctx.arc(cx + this.dir * 6, cy - 4, 3, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#000';
         ctx.beginPath(); ctx.arc(cx + this.dir * 7, cy - 4, 1.4, 0, Math.PI * 2); ctx.fill();
-        // little legs
-        ctx.strokeStyle = this.color; ctx.lineWidth = 3;
-        for (let i = -1; i <= 1; i += 2) {
-          ctx.beginPath(); ctx.moveTo(cx + i * 8, cy + this.h / 2 - 2); ctx.lineTo(cx + i * 12, cy + this.h / 2 + 6); ctx.stroke();
-        }
         break;
+      }
       case 'flyer':
         ctx.fillStyle = this.color;
         ctx.beginPath(); ctx.ellipse(cx, cy, 10, 7, 0, 0, Math.PI * 2); ctx.fill();
@@ -454,7 +539,9 @@ class Enemy {
         ctx.strokeStyle = '#5c3820'; ctx.lineWidth = 4;
         ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - this.dir * 14, cy + 6); ctx.stroke();
         break;
-      case 'thief':
+      case 'thief': {
+        const legPhase = t * (this.state === 'fleeing' ? 16 : 8) + this.startX * 0.02;
+        drawCreatureLegs(ctx, cx, cy + 12, 6, 9, legPhase, this.state === 'fleeing' ? '#ff8ad1' : '#c94fbb', 1, true);
         ctx.fillStyle = this.state === 'fleeing' ? '#ff8ad1' : '#c94fbb';
         ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fff';
@@ -467,6 +554,7 @@ class Enemy {
           ctx.beginPath(); ctx.arc(cx, cy - 22, 4, 0, Math.PI * 2); ctx.fill();
         }
         break;
+      }
       case 'roller':
         ctx.save();
         ctx.translate(cx, cy);
@@ -480,6 +568,9 @@ class Enemy {
         break;
       case 'charger': {
         const flash = this.state === 'telegraph' && Math.floor(t * 12) % 2 === 0;
+        const chargeMoving = this.state === 'charging';
+        const legPhase = t * (chargeMoving ? 22 : 6) + this.startX * 0.02;
+        drawCreatureLegs(ctx, cx, cy + this.h / 2, this.w / 2, this.h * 0.5, legPhase, '#111', 2, true);
         ctx.fillStyle = flash ? '#ffcc00' : '#222';
         ctx.beginPath(); ctx.ellipse(cx, cy, this.w / 2, this.h / 2, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#FCD116';

@@ -65,6 +65,9 @@ function buildLevel1() {
     mkC('cassava', 1800, 300),
     mkC('sugarcane', 2530, 290),
     mkC('cutlass', 2600, GROUND_Y - 40),
+    mkC('starpower', 1200, GROUND_Y - 40),
+    mkC('speedboost', 1550, GROUND_Y - 40),
+    mkC('extralife', 2180, 320),
     mkC('gem', 680, 300),
     mkC('gem', 1810, 290),
     mkC('gem', 2530, 280),
@@ -102,7 +105,10 @@ function buildLevel2() {
     mkC('sugarcane', 950, GROUND_Y - 60),
     mkC('starapple', 1750, GROUND_Y - 80),
     mkC('starapple', 2050, GROUND_Y - 80),
-    mkC('cutlass', 2280, GROUND_Y - 40),
+    mkC('cutlass', 2500, GROUND_Y - 40),
+    mkC('extralife', 1300, GROUND_Y - 40),
+    mkC('starpower', 2460, GROUND_Y - 40),
+    mkC('speedboost', 2560, GROUND_Y - 40),
     ...scatter('cassava', 3200, 3350, 80, GROUND_Y - 40),
     mkC('gem', 700, GROUND_Y - 90),
     mkC('gem', 1900, GROUND_Y - 120),
@@ -143,6 +149,9 @@ function buildLevel3() {
     mkC('starapple', 1160, GROUND_Y - 100),
     mkC('cassava', 1860, GROUND_Y - 80),
     mkC('cutlass', 2050, GROUND_Y - 40),
+    mkC('extralife', 1180, 350),
+    mkC('starpower', 2085, GROUND_Y - 40),
+    mkC('speedboost', 3320, GROUND_Y - 40),
     ...scatter('sugarcane', 2900, 3050, 80, GROUND_Y - 40),
     mkC('gem', 620, GROUND_Y - 60),
     mkC('gem', 1310, GROUND_Y - 60),
@@ -190,7 +199,8 @@ function buildLevel4() {
   const collectibles = [
     mkC('nugget', 400, 360), mkC('nugget', 800, 300), mkC('starapple', 1240, 320),
     mkC('cutlass', 1470, 260), mkC('starapple', 1920, 380), mkC('nugget', 2140, 300),
-    mkC('sugarcane', 2570, 340), mkC('nugget', 3020, 320), mkC('starapple', 3270, 360),
+    mkC('sugarcane', 2570, 340), mkC('nugget', 3040, 300), mkC('starapple', 3270, 360),
+    mkC('extralife', 2810, 390), mkC('starpower', 1970, 395), mkC('speedboost', 3510, 390),
     mkC('gem', 600, 340), mkC('gem', 1670, 340), mkC('gem', 3020, 320),
   ];
   return {
@@ -234,6 +244,7 @@ function buildLevel5() {
     mkC('nugget', 350, 380), mkC('nugget', 750, 380), mkC('starapple', 1160, 260),
     mkC('cutlass', 1370, 310), mkC('nugget', 1590, 380), mkC('starapple', 2060, 280),
     mkC('sugarcane', 2470, 380), mkC('nugget', 2960, 260), mkC('starapple', 3190, 340),
+    mkC('extralife', 1180, 270), mkC('starpower', 2080, 290), mkC('speedboost', 2980, 270),
     mkC('gem', 930, 320), mkC('gem', 1810, 340), mkC('gem', 2710, 320),
   ];
   return {
@@ -267,6 +278,8 @@ function buildLevel6() {
     ...scatter('firefly', 300, 700, 130, 300),
     mkC('nugget', 780, 340), mkC('starapple', 1050, GROUND_Y - 40),
     mkC('cutlass', 1500, GROUND_Y - 40),
+    mkC('starpower', 1650, GROUND_Y - 40),
+    mkC('extralife', 350, GROUND_Y - 40), mkC('speedboost', 3330, 330),
     ...scatter('firefly', 2500, 2800, 140, 280),
     mkC('sugarcane', 2020, 320), mkC('nugget', 3320, 300),
     mkC('gem', 500, 260), mkC('gem', 2020, 300), mkC('gem', 3320, 280),
@@ -311,6 +324,7 @@ function buildLevel7() {
     mkC('sugarcane', 2150, GROUND_Y - 80),
     mkC('nugget', 2450, GROUND_Y - 70),
     mkC('starapple', 2960, GROUND_Y - 90),
+    mkC('starpower', 1150, GROUND_Y - 40), mkC('extralife', 1620, GROUND_Y - 90), mkC('speedboost', 2750, GROUND_Y - 40),
     ...scatter('nugget', 3750, 4050, 90, GROUND_Y - 40),
     mkC('gem', 660, GROUND_Y - 60), mkC('gem', 1630, GROUND_Y - 110), mkC('gem', 2950, GROUND_Y - 90),
   ];
@@ -357,8 +371,9 @@ function buildLevel8() {
     mkC('starapple', 730, 340), mkC('cutlass', 1140, 280),
     mkC('sugarcane', 1650, 340), mkC('starapple', 1950, 340),
     mkC('nugget', 2450, 320), mkC('cassava', 2850, 340),
+    mkC('starpower', 350, GROUND_Y - 40), mkC('speedboost', 2420, GROUND_Y - 40), mkC('extralife', 2940, 270),
     ...scatter('nugget', 3750, 4050, 90, GROUND_Y - 40),
-    mkC('gem', 1140, 280), mkC('gem', 2050, 260), mkC('gem', 3640, 260),
+    mkC('gem', 1165, 255), mkC('gem', 2050, 260), mkC('gem', 3640, 260),
   ];
   return {
     id: 8, name: 'Bush Camp Clearing', location: 'Deep Interior Forest', width: w, groundY: GROUND_Y,
@@ -401,7 +416,8 @@ function buildLevel9() {
     // hatchling "escort" bonus collectibles - worth double points, themed to the beach objective
     mkC('starapple', 200, GROUND_Y - 40), mkC('starapple', 260, GROUND_Y - 40), mkC('starapple', 320, GROUND_Y - 40),
     ...scatter('nugget', 950, 1250, 100, 300),
-    mkC('sugarcane', 2000, 300), mkC('cutlass', 2400, GROUND_Y - 40),
+    mkC('sugarcane', 2000, 300), mkC('cutlass', 2450, GROUND_Y - 40),
+    mkC('extralife', 1050, 270), mkC('starpower', 2150, GROUND_Y - 40), mkC('speedboost', 3780, GROUND_Y - 40),
     ...scatter('nugget', 3000, 3300, 90, GROUND_Y - 40),
     mkC('cassava', 3850, 320),
     mkC('gem', 1230, 300), mkC('gem', 2170, 300), mkC('gem', 3830, 320),
@@ -457,8 +473,9 @@ function buildLevel10() {
     mkC('sugarcane', 1730, GROUND_Y - 80), mkC('nugget', 2040, GROUND_Y - 80),
     mkC('cassava', 3000, GROUND_Y - 130), mkC('nugget', 3220, GROUND_Y - 80),
     mkC('starapple', 3980, GROUND_Y - 80), mkC('nugget', 4220, GROUND_Y - 130),
+    mkC('starpower', 1650, GROUND_Y - 40), mkC('extralife', 3055, GROUND_Y - 115), mkC('speedboost', 2200, GROUND_Y - 40),
     ...scatter('nugget', 4900, 5100, 90, GROUND_Y - 40),
-    mkC('gem', 1250, GROUND_Y - 100), mkC('gem', 2380, GROUND_Y - 110), mkC('gem', 4000, GROUND_Y - 80),
+    mkC('gem', 1270, GROUND_Y - 120), mkC('gem', 2380, GROUND_Y - 110), mkC('gem', 4000, GROUND_Y - 80),
   ];
   return {
     id: 10, name: 'Kanuku Mountains Trail', location: 'Kanuku Mountains', width: w, groundY: GROUND_Y,

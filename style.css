@@ -66,6 +66,8 @@ html, body {
 #hud-score { font-size: 16px; }
 #hud-gems { font-size: 14px; color: #6be3d1; }
 #hud-gems.hidden { display: none; }
+#hud-powerups { font-size: 13px; color: #FCD116; }
+#hud-powerups.hidden { display: none; }
 
 #boss-health-wrap {
   position: absolute;
@@ -119,6 +121,25 @@ html, body {
   from { opacity: 0; transform: translate(-50%, 10px); }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
+
+/* ================= Power-up / life toast ================= */
+#toast-popup {
+  position: absolute;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 15, 5, 0.9);
+  border: 2px solid #ff3355;
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: bold;
+  text-align: center;
+  pointer-events: none;
+  animation: popup-in 0.25s ease-out;
+}
+#toast-popup.hidden { display: none; }
 
 /* ================= Screens (menus) ================= */
 .screen {
