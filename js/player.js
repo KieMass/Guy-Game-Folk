@@ -1,18 +1,16 @@
 /*
   player.js
   Player physics, animation state, and controls.
-  Sonic-style auto-run (drifts toward a forward speed on its own, can be held back
-  or sped up) combined with Mario-style gravity/jump/stomp platforming.
+  Standard Mario-style platforming: the player only moves when a direction is
+  held (no auto-run), with gravity, variable jump height, and coyote time.
 */
 
-const GRAVITY = 1900;
+const GRAVITY = 1800;
 const MAX_FALL_SPEED = 900;
-const JUMP_VELOCITY = -640;
+const JUMP_VELOCITY = -700;
 const JUMP_CUT_MULT = 0.45;
 const COYOTE_TIME = 0.1;
-const AUTO_RUN_SPEED = 150;
-const MAX_RUN_SPEED = 270;
-const BACK_SPEED = 110;
+const MAX_RUN_SPEED = 260;
 
 class Player {
   constructor(x, y) {
@@ -64,11 +62,11 @@ class Player {
       if (this.cutlassTimer <= 0) this.hasCutlass = false;
     }
 
-    // horizontal: auto-run drift toward target speed
-    let target = AUTO_RUN_SPEED;
+    // horizontal movement: only moves while a direction is actively held
+    let target = 0;
     if (input.right) target = MAX_RUN_SPEED;
-    else if (input.left) target = -BACK_SPEED;
-    const accel = this.onGround ? 1500 : 850;
+    else if (input.left) target = -MAX_RUN_SPEED;
+    const accel = this.onGround ? (target === 0 ? 1900 : 1500) : 900;
     if (this.vx < target) this.vx = Math.min(target, this.vx + accel * dt);
     else if (this.vx > target) this.vx = Math.max(target, this.vx - accel * dt);
 
@@ -117,7 +115,7 @@ class Player {
     if (!this.onGround) this.state = this.vy < 0 ? 'jump' : 'fall';
     else this.state = Math.abs(this.vx) > 4 ? 'run' : 'idle';
 
-    this.animTimer += dt * (this.onGround ? Math.max(0.6, Math.abs(this.vx) / 140) : 1);
+    this.animTimer += dt * (this.onGround ? Math.max(0.6, Math.abs(this.vx) / 130) : 1);
   }
 
   _resolveAxis(axis, platforms) {
@@ -143,6 +141,95 @@ class Player {
     }
   }
 
+  // ---------------- articulated limb drawing ----------------
+  // Two-segment (thigh/shin or upper-arm/forearm) procedural limbs, posed
+  // differently per animation state, for a more anatomical cartoon look.
+
+  _legPose(phase, legIndex, facing) {
+    let hipAngle, kneeBend;
+    if (this.state === 'run') {
+      hipAngle = Math.sin(phase) * 0.78;
+      kneeBend = 0.18 + Math.max(0, -hipAngle) * 1.7;
+    } else if (this.state === 'jump') {
+      hipAngle = facing * (legIndex === 0 ? 0.55 : -0.3);
+      kneeBend = legIndex === 0 ? 1.7 : 1.25;
+    } else if (this.state === 'fall') {
+      hipAngle = facing * (legIndex === 0 ? 0.32 : -0.18);
+      kneeBend = legIndex === 0 ? 0.35 : 0.6;
+    } else {
+      hipAngle = 0;
+      kneeBend = 0.2 + Math.sin(this.animTimer * 2.4) * 0.05;
+    }
+    return { hipAngle, kneeBend };
+  }
+
+  _drawLeg(ctx, hipX, hipY, phase, legIndex, facing) {
+    const thigh = 12.5, shin = 13;
+    const { hipAngle, kneeBend } = this._legPose(phase, legIndex, facing);
+    const kneeX = hipX + Math.sin(hipAngle) * thigh;
+    const kneeY = hipY + Math.cos(hipAngle) * thigh;
+    const shinAngle = hipAngle + kneeBend;
+    const footX = kneeX + Math.sin(shinAngle) * shin;
+    const footY = kneeY + Math.cos(shinAngle) * shin;
+    ctx.strokeStyle = '#3a2a1a';
+    ctx.lineWidth = 5.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(hipX, hipY); ctx.lineTo(kneeX, kneeY); ctx.lineTo(footX, footY);
+    ctx.stroke();
+    ctx.fillStyle = '#241a10';
+    ctx.beginPath(); ctx.ellipse(footX + facing * 2.5, footY, 4.6, 3, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  _drawArm(ctx, shX, shY, phase, facing) {
+    const upper = 10, lower = 11;
+    let shAngle, elbowBend;
+    if (this.state === 'run') {
+      shAngle = Math.sin(phase) * 0.9;
+      elbowBend = 0.35 + Math.max(0, Math.sin(phase)) * 0.55;
+    } else if (this.state === 'jump') {
+      shAngle = -facing * 0.5;
+      elbowBend = 0.3;
+    } else if (this.state === 'fall') {
+      shAngle = facing * 0.15;
+      elbowBend = 0.55;
+    } else {
+      shAngle = Math.sin(this.animTimer * 2.4) * 0.09;
+      elbowBend = 0.25;
+    }
+    const elbowX = shX + Math.sin(shAngle) * upper;
+    const elbowY = shY + Math.cos(shAngle) * upper;
+    const foreAngle = shAngle + elbowBend;
+    const handX = elbowX + Math.sin(foreAngle) * lower;
+    const handY = elbowY + Math.cos(foreAngle) * lower;
+    ctx.strokeStyle = '#c99a6a';
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(shX, shY); ctx.lineTo(elbowX, elbowY); ctx.lineTo(handX, handY);
+    ctx.stroke();
+    ctx.fillStyle = '#c99a6a';
+    ctx.beginPath(); ctx.arc(handX, handY, 2.7, 0, Math.PI * 2); ctx.fill();
+  }
+
+  _drawSwipeArm(ctx, shX, shY, facing) {
+    const p = 1 - this.swipeTimer / 0.22;
+    const ang = facing > 0 ? -1.1 + p * 2.0 : Math.PI + 1.1 - p * 2.0;
+    const handX = shX + Math.cos(ang) * 19;
+    const handY = shY + 4 + Math.sin(ang) * 19;
+    ctx.strokeStyle = '#c99a6a';
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(shX, shY); ctx.lineTo(handX, handY); ctx.stroke();
+    ctx.strokeStyle = '#e6e6e6';
+    ctx.lineWidth = 3.5;
+    const bladeAng = ang - facing * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(handX, handY);
+    ctx.lineTo(handX + Math.cos(bladeAng) * 20, handY + Math.sin(bladeAng) * 20);
+    ctx.stroke();
+  }
+
   draw(ctx, camera, t) {
     const sx = Math.round(this.x - camera.x);
     const sy = Math.round(this.y - camera.y);
@@ -150,60 +237,78 @@ class Player {
     if (this.invincible > 0 && Math.floor(t * 16) % 2 === 0) ctx.globalAlpha = 0.35;
 
     const cx = sx + this.w / 2;
-    const legPhase = this.onGround && this.state === 'run' ? Math.sin(this.animTimer * 12) : 0;
-    const squat = this.state === 'idle' ? 0 : (this.state === 'jump' ? -3 : this.state === 'fall' ? 2 : 0);
+    const facing = this.facing;
+    const speedRatio = Math.max(0, Math.min(1, Math.abs(this.vx) / MAX_RUN_SPEED));
 
-    // legs
-    ctx.strokeStyle = '#3a2a1a';
-    ctx.lineWidth = 6;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(cx - 6, sy + this.h - 14);
-    ctx.lineTo(cx - 6 + legPhase * 7, sy + this.h - 1);
-    ctx.moveTo(cx + 6, sy + this.h - 14);
-    ctx.lineTo(cx + 6 - legPhase * 7, sy + this.h - 1);
-    ctx.stroke();
+    let squat = 0, lean = 0;
+    if (this.state === 'run') { lean = facing * 3 * speedRatio; }
+    else if (this.state === 'jump') { squat = -3; lean = facing * 2; }
+    else if (this.state === 'fall') { squat = 2; lean = facing * 1; }
+    else { squat = Math.sin(this.animTimer * 2.4) * 0.6; }
 
-    // body
+    const hipY = sy + this.h - 17;
+    const shoulderY = sy + 20 + squat;
+    const legPhase = this.animTimer * 11;
+
+    // legs (drawn behind torso)
+    this._drawLeg(ctx, cx - 4, hipY, legPhase, 0, facing);
+    this._drawLeg(ctx, cx + 4, hipY, legPhase + Math.PI, 1, facing);
+
+    // torso (softly rounded silhouette, flat cartoon shading)
     ctx.fillStyle = '#009E49';
-    ctx.fillRect(sx + 3, sy + 15 + squat, this.w - 6, this.h - 26);
+    const tw = this.w - 8, th = this.h - 27;
+    const tx = cx - tw / 2 + lean * 0.4;
+    ctx.beginPath();
+    ctx.moveTo(tx, shoulderY);
+    ctx.quadraticCurveTo(tx - 2, shoulderY + th / 2, tx + 1, shoulderY + th);
+    ctx.lineTo(tx + tw - 1, shoulderY + th);
+    ctx.quadraticCurveTo(tx + tw + 2, shoulderY + th / 2, tx + tw, shoulderY);
+    ctx.closePath();
+    ctx.fill();
     // gold sash
     ctx.fillStyle = '#FCD116';
-    ctx.fillRect(sx + 3, sy + 24 + squat, this.w - 6, 5);
+    ctx.fillRect(tx, shoulderY + th * 0.42, tw, 5);
+    // subtle shading for depth
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(tx + tw - 4, shoulderY, 4, th);
+
+    // arms (front arm swipes with the cutlass when active)
+    if (this.swipeTimer > 0) {
+      this._drawArm(ctx, cx - 2, shoulderY, legPhase + Math.PI, facing);
+      this._drawSwipeArm(ctx, cx + 2, shoulderY, facing);
+    } else {
+      this._drawArm(ctx, cx - 2, shoulderY, legPhase + Math.PI, facing);
+      this._drawArm(ctx, cx + 2, shoulderY, legPhase, facing);
+    }
 
     // head
+    const headCy = sy + 12 + squat + lean * 0.15;
+    const headCx = cx + lean * 0.6;
     ctx.fillStyle = '#c99a6a';
-    ctx.beginPath(); ctx.arc(cx, sy + 12 + squat, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(headCx, headCy, 10.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(headCx - facing * 9.5, headCy + 2, 2.1, 0, Math.PI * 2); ctx.fill();
     // hair
-    ctx.fillStyle = '#3a2a1a';
-    ctx.beginPath(); ctx.arc(cx, sy + 8 + squat, 11, Math.PI, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2a1c10';
+    ctx.beginPath(); ctx.arc(headCx, headCy - 1, 10.5, Math.PI, Math.PI * 2); ctx.fill();
     // cap
     ctx.fillStyle = '#CE1126';
-    ctx.beginPath(); ctx.arc(cx, sy + 7 + squat, 9, Math.PI * 0.95, Math.PI * 2.05); ctx.fill();
-    ctx.fillRect(cx - 9, sy + 5 + squat, 18, 4);
+    ctx.beginPath(); ctx.arc(headCx, headCy - 2, 8.6, Math.PI * 0.92, Math.PI * 2.08); ctx.fill();
+    ctx.fillRect(headCx - 8.6, headCy - 4, 17.2, 4);
+    ctx.fillStyle = '#FCD116';
+    ctx.beginPath(); ctx.arc(headCx, headCy - 6, 2, 0, Math.PI * 2); ctx.fill();
     // eyes
     ctx.fillStyle = '#111';
-    ctx.beginPath(); ctx.arc(cx + this.facing * 4, sy + 13 + squat, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(headCx + facing * 4, headCy, 1.5, 0, Math.PI * 2); ctx.fill();
 
-    // arm / cutlass
-    if (this.swipeTimer > 0) {
-      const p = 1 - this.swipeTimer / 0.22;
-      const ang = this.facing > 0 ? -0.9 + p * 1.8 : Math.PI + 0.9 - p * 1.8;
-      ctx.strokeStyle = '#e6e6e6';
-      ctx.lineWidth = 4;
+    // cutlass sheathed at the hip when carried but not mid-swipe
+    if (this.hasCutlass && this.swipeTimer <= 0) {
+      ctx.strokeStyle = '#cfcfcf'; ctx.lineWidth = 2.6;
       ctx.beginPath();
-      ctx.moveTo(cx + this.facing * 8, sy + 24 + squat);
-      ctx.lineTo(cx + this.facing * 8 + Math.cos(ang) * 22, sy + 24 + squat + Math.sin(ang) * 22);
-      ctx.stroke();
-    } else if (this.hasCutlass) {
-      ctx.strokeStyle = '#cfcfcf';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(cx + this.facing * 9, sy + 28 + squat);
-      ctx.lineTo(cx + this.facing * 18, sy + 16 + squat);
+      ctx.moveTo(cx + facing * 8, hipY - 6);
+      ctx.lineTo(cx + facing * 15, hipY - 20);
       ctx.stroke();
       ctx.strokeStyle = '#7a4a23'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(cx + this.facing * 9, sy + 28 + squat); ctx.lineTo(cx + this.facing * 5, sy + 33 + squat); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + facing * 8, hipY - 6); ctx.lineTo(cx + facing * 5, hipY - 1); ctx.stroke();
     }
 
     ctx.restore();

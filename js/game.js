@@ -56,7 +56,9 @@ function init() {
   window.addEventListener('keyup', (e) => { Game.keys[e.code] = false; });
 
   const btnStart = document.getElementById('btn-start');
-  if (btnStart) btnStart.addEventListener('click', startNewRun);
+  if (btnStart) btnStart.addEventListener('click', () => setState('instructions'));
+  const btnBegin = document.getElementById('btn-begin');
+  if (btnBegin) btnBegin.addEventListener('click', startNewRun);
   const btnRetry = document.getElementById('btn-retry');
   if (btnRetry) btnRetry.addEventListener('click', retryGame);
   const btnAgain = document.getElementById('btn-playagain');
@@ -69,6 +71,9 @@ function init() {
 function handleKeyAction(code) {
   switch (Game.state) {
     case 'title':
+      if (code === 'Space' || code === 'Enter') setState('instructions');
+      break;
+    case 'instructions':
       if (code === 'Space' || code === 'Enter') startNewRun();
       break;
     case 'levelintro':
@@ -98,7 +103,7 @@ function setState(newState) {
   Game.state = newState;
   document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
   const map = {
-    title: 'screen-title', levelintro: 'screen-intro', bossintro: 'screen-boss-intro',
+    title: 'screen-title', instructions: 'screen-instructions', levelintro: 'screen-intro', bossintro: 'screen-boss-intro',
     paused: 'screen-pause', gameover: 'screen-gameover', victory: 'screen-victory',
   };
   if (map[newState]) document.getElementById(map[newState]).classList.remove('hidden');
@@ -516,7 +521,7 @@ function render() {
   const ctx = Game.ctx;
   ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
-  if (Game.state === 'title') {
+  if (Game.state === 'title' || Game.state === 'instructions') {
     drawBackground(ctx, LEVELS[0], { x: Game.t * 12, y: 0 }, Game.t);
     return;
   }

@@ -46,12 +46,12 @@ function buildLevel1() {
   const w = 3000;
   const g = groundWithGaps(0, w, GROUND_Y, [[820, 905], [1900, 1975]], '#c9a15a', '#3fa34d', 'water', '#1c6fbf');
   const platforms = [...g.platforms,
-    plat(650, 350, 130, 20, '#c9a15a', '#CE1126'),
-    plat(1000, 330, 110, 20, '#c9a15a', '#FCD116'),
+    plat(650, 370, 130, 20, '#c9a15a', '#CE1126'),
+    plat(1000, 355, 110, 20, '#c9a15a', '#FCD116'),
     plat(1250, 380, 100, 20, '#c9a15a', '#009E49'),
-    plat(1780, 340, 130, 20, '#c9a15a', '#CE1126'),
+    plat(1780, 365, 130, 20, '#c9a15a', '#CE1126'),
     plat(2150, 360, 120, 20, '#c9a15a', '#FCD116'),
-    plat(2500, 330, 140, 20, '#c9a15a', '#009E49'),
+    plat(2500, 355, 140, 20, '#c9a15a', '#009E49'),
   ];
   const enemies = [
     mkEnemy('crawler', 500, GROUND_Y - 28, { range: 70, speed: 40, color: '#CE1126' }),
@@ -253,7 +253,7 @@ function buildLevel6() {
     plat(760, 380, 90, 18, '#a68a52', '#c9ab6a'),
     plat(2000, 360, 90, 18, '#a68a52', '#c9ab6a'),
     movingPlat(2900, 380, 90, 18, 'x', 60, 0.9, 0, '#a68a52', '#c9ab6a'),
-    plat(3300, 340, 100, 18, '#a68a52', '#c9ab6a'),
+    plat(3300, 360, 100, 18, '#a68a52', '#c9ab6a'),
   ];
   const enemies = [
     mkEnemy('crawler', 500, GROUND_Y - 26, { range: 70, speed: 55, color: '#5a4020', w: 32, h: 24 }),
@@ -384,9 +384,9 @@ function buildLevel9() {
   ];
   const platforms = [...g.platforms,
     plat(900, 380, 100, 18, '#e8d29a', '#f5e6bb'),
-    plat(1200, 340, 100, 18, '#e8d29a', '#f5e6bb'),
+    plat(1200, 360, 100, 18, '#e8d29a', '#f5e6bb'),
     crumblePlat(1900, 380, 90, 18, '#e8d29a', '#f5e6bb'),
-    plat(2150, 340, 100, 18, '#e8d29a', '#f5e6bb'),
+    plat(2150, 360, 100, 18, '#e8d29a', '#f5e6bb'),
     movingPlat(2900, 370, 100, 18, 'x', 80, 0.8, 0, '#e8d29a', '#f5e6bb'),
     plat(3800, 360, 110, 18, '#e8d29a', '#f5e6bb'),
   ];
