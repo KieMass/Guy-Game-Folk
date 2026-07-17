@@ -263,6 +263,13 @@ html, body {
   padding: 14px 20px;
 }
 
+.tip-text {
+  font-size: 14px;
+  border: 2px solid #FCD116;
+  color: #FCD116;
+}
+.tip-text:empty { display: none; }
+
 .hint {
   font-size: 13px;
   opacity: 0.8;

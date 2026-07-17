@@ -41,6 +41,7 @@ const Game = {
   prevState: 'playing',
   isTouch: false,
   deathTimer: 0,
+  continuesLeft: 3,
 };
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -186,9 +187,23 @@ function startNewRun() {
   Game.unlockedBonusFacts = [];
   Game.treasureCount = 0;
   Game.toast = null;
+  Game.continuesLeft = 3;
   loadStage(0);
 }
-function retryGame() { startNewRun(); }
+
+// Resumes at the level/boss the player just failed, rather than sending them
+// all the way back to level 1 -- costs one of the run's 3 continues.
+function continueRun() {
+  Game.continuesLeft--;
+  Game.lives = 3;
+  Game.toast = null;
+  loadStage(Game.campaignPos);
+}
+
+function retryGame() {
+  if (Game.continuesLeft > 0) continueRun();
+  else startNewRun();
+}
 function backToTitle() { setState('title'); }
 
 function loadStage(pos) {
@@ -242,6 +257,7 @@ function loadBoss(idx) {
 function showBossIntro(def, idx) {
   document.getElementById('boss-intro-title').textContent = def.name;
   document.getElementById('boss-intro-flavor').textContent = def.flavor + ' — ' + pickRandom(BOSS_FACTS[idx]);
+  document.getElementById('boss-intro-tip').textContent = def.tip ? `💡 Tip: ${def.tip}` : '';
   setState('bossintro');
   clearTimeout(Game.introTimeout);
   Game.introTimeout = setTimeout(dismissBossIntro, 5000);
@@ -558,6 +574,19 @@ function respawnPlayer() {
 function triggerGameOver() {
   setState('gameover');
   document.getElementById('gameover-score').textContent = `Score: ${Game.score}`;
+  const titleEl = document.getElementById('gameover-title');
+  const continuesEl = document.getElementById('gameover-continues');
+  const btnRetry = document.getElementById('btn-retry');
+  const stageName = Game.currentLevel ? Game.currentLevel.name : (Game.currentBossDef ? Game.currentBossDef.name : '');
+  if (Game.continuesLeft > 0) {
+    titleEl.textContent = 'Continue?';
+    continuesEl.textContent = `${Game.continuesLeft} continue${Game.continuesLeft === 1 ? '' : 's'} left`;
+    btnRetry.textContent = `Tap to Continue at ${stageName}`;
+  } else {
+    titleEl.textContent = 'Game Over';
+    continuesEl.textContent = 'Out of continues -- back to the beginning';
+    btnRetry.textContent = 'Tap to Start Over';
+  }
 }
 
 function completeLevel() {

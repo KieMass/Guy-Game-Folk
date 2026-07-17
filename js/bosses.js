@@ -25,6 +25,7 @@ function arenaGround(color, topColor) {
 const OleHigueBoss = {
   id: 1, name: 'Ole Higue', afterLevel: 2,
   flavor: "By night she sheds her skin and flies as a ball of fire. Knock her down when she lands!",
+  tip: "Stay clear while she's a swooping fireball. When she lands and sheds her skin, stomp or swipe her fast -- 3 hits wins it!",
   arenaPlatforms: arenaGround('#c9a15a', '#3fa34d'),
 
   init() {
@@ -117,6 +118,7 @@ const OleHigueBoss = {
 const MassacooramanBoss = {
   id: 2, name: 'Massacoraman', afterLevel: 4,
   flavor: "The great river spirit guards these waters. Dodge his slams and strike back when his arm gets stuck!",
+  tip: "Watch which platform flashes red and jump clear before he slams it. Once his arm is stuck there, stomp or swipe it -- 3 hits wins it!",
   arenaPlatforms: [
     new Platform({ x: -50, y: ARENA_GROUND_Y + 40, w: 250, h: 200, type: 'solid', color: '#8a6a3a', topColor: '#7a5230' }),
     new Platform({ x: 760, y: ARENA_GROUND_Y + 40, w: 250, h: 200, type: 'solid', color: '#8a6a3a', topColor: '#7a5230' }),
@@ -220,6 +222,7 @@ const MassacooramanBoss = {
 const MoongazerBoss = {
   id: 3, name: 'Moongazer', afterLevel: 6,
   flavor: "A tall misty figure watches the crossroads. Strike when he flickers into view!",
+  tip: "He's vulnerable right after he teleports to a new spot -- strike fast, then jump over his moonlight beam before he vanishes again! 3 hits wins it.",
   arenaPlatforms: arenaGround('#20263f', '#2a3a63'),
   spotXs: [180, 480, 780],
 
@@ -314,6 +317,7 @@ const MoongazerBoss = {
 const BaccooBoss = {
   id: 4, name: 'Baccoo', afterLevel: 8,
   flavor: "A bottle full of mischief! Find the real Baccoo among his tricky decoys and stomp him!",
+  tip: "Only one imp has a subtle golden glow -- that's the real Baccoo. Stomping a decoy does nothing, so look closely before you jump! 3 hits wins it.",
   arenaPlatforms: arenaGround('#4a6b3a', '#6b8a4a'),
 
   init() {
@@ -403,6 +407,7 @@ const BaccooBoss = {
 const KanaimaBoss = {
   id: 5, name: 'Kanaima', afterLevel: 10,
   flavor: "The spirit of justice himself. Face all three of his forms to complete your journey!",
+  tip: "Dodge his bolts and jaguar charges, then strike while he's glowing and open -- each form only needs 2 hits, and he gets slower as he weakens!",
   arenaPlatforms: arenaGround('#5a6b4a', '#3fa34d'),
 
   init() {
