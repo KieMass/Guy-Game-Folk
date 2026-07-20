@@ -5,6 +5,49 @@
   All rendering is procedural Canvas 2D (no image assets).
 */
 
+// ---------- shared rendering helpers ----------
+// Manual rounded-rect path (avoids relying on ctx.roundRect, which isn't in
+// every browser build we target) used everywhere a flat fillRect used to be,
+// for a softer, less "blocky" silhouette.
+function roundRectPath(ctx, x, y, w, h, r) {
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.lineTo(x + w - rr, y);
+  ctx.arcTo(x + w, y, x + w, y + rr, rr);
+  ctx.lineTo(x + w, y + h - rr);
+  ctx.arcTo(x + w, y + h, x + w - rr, y + h, rr);
+  ctx.lineTo(x + rr, y + h);
+  ctx.arcTo(x, y + h, x, y + h - rr, rr);
+  ctx.lineTo(x, y + rr);
+  ctx.arcTo(x, y, x + rr, y, rr);
+  ctx.closePath();
+}
+
+// Lightens (positive percent) or darkens (negative) a '#rrggbb' color, used
+// to build cheap gradients/shading without needing image assets.
+function shadeColor(hex, percent) {
+  const num = parseInt(hex.replace('#', ''), 16);
+  let r = (num >> 16) + Math.round(2.55 * percent);
+  let g = ((num >> 8) & 0x00ff) + Math.round(2.55 * percent);
+  let b = (num & 0x0000ff) + Math.round(2.55 * percent);
+  r = Math.max(0, Math.min(255, r));
+  g = Math.max(0, Math.min(255, g));
+  b = Math.max(0, Math.min(255, b));
+  return `rgb(${r},${g},${b})`;
+}
+
+// Soft contact shadow drawn under grounded characters -- a cheap trick that
+// does a lot to stop everything feeling like it's floating over flat color.
+function drawGroundShadow(ctx, cx, groundScreenY, halfWidth) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath();
+  ctx.ellipse(cx, groundScreenY, halfWidth, halfWidth * 0.32, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 // ---------- Platform ----------
 // type: 'solid' | 'moving' | 'crumble' | 'disappear'
 class Platform {
@@ -102,10 +145,31 @@ class Platform {
 
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.fillStyle = this.color;
-    ctx.fillRect(sx + shake, sy, this.w, this.h);
-    ctx.fillStyle = this.topColor;
-    ctx.fillRect(sx + shake, sy, this.w, 6);
+    const drawX = sx + shake;
+    const bandH = Math.min(7, this.h);
+    const r = Math.min(6, this.h / 2, this.w / 2);
+
+    roundRectPath(ctx, drawX, sy, this.w, this.h, r);
+    ctx.save();
+    ctx.clip();
+    // body: soft vertical gradient instead of a flat fill, for some volume
+    const bodyGrad = ctx.createLinearGradient(0, sy, 0, sy + this.h);
+    bodyGrad.addColorStop(0, this.color);
+    bodyGrad.addColorStop(1, shadeColor(this.color, -14));
+    ctx.fillStyle = bodyGrad;
+    ctx.fillRect(drawX, sy, this.w, this.h);
+    // top band (grass/gold/etc accent), also gently shaded
+    const topGrad = ctx.createLinearGradient(0, sy, 0, sy + bandH);
+    topGrad.addColorStop(0, shadeColor(this.topColor, 12));
+    topGrad.addColorStop(1, this.topColor);
+    ctx.fillStyle = topGrad;
+    ctx.fillRect(drawX, sy, this.w, bandH);
+    ctx.restore();
+
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+    roundRectPath(ctx, drawX, sy, this.w, this.h, r);
+    ctx.stroke();
     ctx.restore();
   }
 }
@@ -135,12 +199,30 @@ class Hazard {
     const sy = this.y - camera.y;
     if (sx + this.w < -20 || sx > 1000) return;
     ctx.save();
-    ctx.fillStyle = this.color;
+    const grad = ctx.createLinearGradient(0, sy, 0, sy + Math.min(this.h, 100));
+    grad.addColorStop(0, shadeColor(this.color, 22));
+    grad.addColorStop(0.25, this.color);
+    grad.addColorStop(1, shadeColor(this.color, -22));
+    ctx.fillStyle = grad;
     ctx.fillRect(sx, sy, this.w, this.h);
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+
+    // filled highlight crest riding the wave line, softer than a bare stroke
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    for (let wx = 0; wx <= this.w; wx += 10) {
+      const wy = sy + Math.sin(t * 4 + (this.x + wx) * 0.05) * 3;
+      ctx.lineTo(sx + wx, wy);
+    }
+    ctx.lineTo(sx + this.w, sy + 9);
+    ctx.lineTo(sx, sy + 9);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    for (let wx = 0; wx < this.w; wx += 16) {
+    for (let wx = 0; wx < this.w; wx += 14) {
       const wy = sy + Math.sin(t * 4 + (this.x + wx) * 0.05) * 3;
       if (wx === 0) ctx.moveTo(sx + wx, wy);
       else ctx.lineTo(sx + wx, wy);
@@ -363,12 +445,10 @@ class Projectile {
 // Procedural walk-cycle legs shared by ground creatures: bent thigh/shin
 // segments that swing and fold like the player's, scaled to a small body.
 function drawCreatureLegs(ctx, cx, footBaseY, halfW, legReach, phase, color, pairCount, moving) {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = Math.max(2, halfW * 0.22);
-  ctx.lineCap = 'round';
   const hipY = footBaseY - legReach;
   const thigh = legReach * 0.55, shin = legReach * 0.55;
   const pairOffsets = pairCount === 2 ? [-halfW * 0.5, halfW * 0.5] : [0];
+  const legs = [];
   pairOffsets.forEach((offsetX, pairIdx) => {
     for (let side = -1; side <= 1; side += 2) {
       let hipAngle, kneeBend;
@@ -386,11 +466,29 @@ function drawCreatureLegs(ctx, cx, footBaseY, halfW, legReach, phase, color, pai
       const shinAngle = hipAngle + kneeBend;
       const footX = kneeX + Math.sin(shinAngle) * shin;
       const footY = kneeY + Math.cos(shinAngle) * shin;
-      ctx.beginPath();
-      ctx.moveTo(hipX, hipY); ctx.lineTo(kneeX, kneeY); ctx.lineTo(footX, footY);
-      ctx.stroke();
+      legs.push({ hipX, kneeX, kneeY, footX, footY });
     }
   });
+
+  const mainWidth = Math.max(2, halfW * 0.22);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  // dark outline pass first, then the colored leg on top -- same trick as
+  // the player's limbs, so creatures read as illustrated rather than wireframe
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = mainWidth + 1.6;
+  for (const leg of legs) {
+    ctx.beginPath();
+    ctx.moveTo(leg.hipX, hipY); ctx.lineTo(leg.kneeX, leg.kneeY); ctx.lineTo(leg.footX, leg.footY);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = mainWidth;
+  for (const leg of legs) {
+    ctx.beginPath();
+    ctx.moveTo(leg.hipX, hipY); ctx.lineTo(leg.kneeX, leg.kneeY); ctx.lineTo(leg.footX, leg.footY);
+    ctx.stroke();
+  }
 }
 
 // ---------- Enemy ----------
@@ -509,44 +607,66 @@ class Enemy {
     }
 
     const cx = sx + this.w / 2, cy = sy + this.h / 2;
+    const outline = 'rgba(0,0,0,0.35)';
     switch (this.type) {
       case 'crawler': {
+        drawGroundShadow(ctx, cx, sy + this.h + 1, this.w / 2 * 0.85);
         const legPhase = t * 9 + this.startX * 0.03;
-        drawCreatureLegs(ctx, cx, cy + this.h / 2, this.w / 2, Math.max(6, this.h * 0.45), legPhase, this.color, 2, true);
+        drawCreatureLegs(ctx, cx, cy + this.h / 2, this.w / 2, Math.max(6, this.h * 0.45), legPhase, shadeColor(this.color, -25), 2, true);
         ctx.fillStyle = this.color;
         ctx.beginPath(); ctx.ellipse(cx, cy, this.w / 2, this.h / 2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.beginPath(); ctx.ellipse(cx - this.w * 0.15, cy - this.h * 0.22, this.w * 0.28, this.h * 0.2, -0.3, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 1.6; ctx.strokeStyle = outline;
+        ctx.beginPath(); ctx.ellipse(cx, cy, this.w / 2, this.h / 2, 0, 0, Math.PI * 2); ctx.stroke();
         ctx.fillStyle = '#fff';
         ctx.beginPath(); ctx.arc(cx + this.dir * 6, cy - 4, 3, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#000';
         ctx.beginPath(); ctx.arc(cx + this.dir * 7, cy - 4, 1.4, 0, Math.PI * 2); ctx.fill();
         break;
       }
-      case 'flyer':
+      case 'flyer': {
         ctx.fillStyle = this.color;
         ctx.beginPath(); ctx.ellipse(cx, cy, 10, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 1.4; ctx.strokeStyle = outline;
+        ctx.beginPath(); ctx.ellipse(cx, cy, 10, 7, 0, 0, Math.PI * 2); ctx.stroke();
         ctx.fillStyle = 'rgba(255,255,255,0.85)';
         const wingFlap = Math.sin(t * 16) * 6;
         ctx.beginPath(); ctx.ellipse(cx - 10, cy - wingFlap, 8, 4, 0.4, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.ellipse(cx + 10, cy - wingFlap, 8, 4, -0.4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#111';
+        ctx.beginPath(); ctx.arc(cx + this.dir * 4, cy - 1, 1.4, 0, Math.PI * 2); ctx.fill();
         break;
+      }
       case 'thrower':
         ctx.fillStyle = '#7a4a2b';
         ctx.beginPath(); ctx.ellipse(cx, cy, 12, 13, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.18)';
+        ctx.beginPath(); ctx.ellipse(cx - 3, cy - 5, 5, 6, -0.3, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 1.6; ctx.strokeStyle = outline;
+        ctx.beginPath(); ctx.ellipse(cx, cy, 12, 13, 0, 0, Math.PI * 2); ctx.stroke();
         ctx.fillStyle = '#5c3820';
         ctx.beginPath(); ctx.arc(cx + this.dir * 10, cy - 10, 6, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fff';
         ctx.beginPath(); ctx.arc(cx + this.dir * 12, cy - 11, 2, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#5c3820'; ctx.lineWidth = 4;
+        ctx.strokeStyle = '#5c3820'; ctx.lineWidth = 4; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - this.dir * 14, cy + 6); ctx.stroke();
         break;
       case 'thief': {
+        drawGroundShadow(ctx, cx, cy + 20, 10);
         const legPhase = t * (this.state === 'fleeing' ? 16 : 8) + this.startX * 0.02;
-        drawCreatureLegs(ctx, cx, cy + 12, 6, 9, legPhase, this.state === 'fleeing' ? '#ff8ad1' : '#c94fbb', 1, true);
+        drawCreatureLegs(ctx, cx, cy + 12, 6, 9, legPhase, shadeColor(this.state === 'fleeing' ? '#ff8ad1' : '#c94fbb', -25), 1, true);
         ctx.fillStyle = this.state === 'fleeing' ? '#ff8ad1' : '#c94fbb';
         ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.28)';
+        ctx.beginPath(); ctx.ellipse(cx - 3, cy - 4, 5, 3.5, -0.3, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 1.6; ctx.strokeStyle = outline;
+        ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI * 2); ctx.stroke();
         ctx.fillStyle = '#fff';
         ctx.beginPath(); ctx.arc(cx - 4, cy - 3, 2.5, 0, Math.PI * 2); ctx.arc(cx + 4, cy - 3, 2.5, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#c94fbb'; ctx.lineWidth = 3;
+        ctx.fillStyle = '#221';
+        ctx.beginPath(); ctx.arc(cx - 4, cy - 3, 1.1, 0, Math.PI * 2); ctx.arc(cx + 4, cy - 3, 1.1, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#c94fbb'; ctx.lineWidth = 3; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(cx - 8, cy - 12); ctx.lineTo(cx - 4, cy - 18); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(cx + 8, cy - 12); ctx.lineTo(cx + 4, cy - 18); ctx.stroke();
         if (this.hasItem) {
@@ -556,23 +676,33 @@ class Enemy {
         break;
       }
       case 'roller':
+        drawGroundShadow(ctx, cx, sy + this.h + 1, this.w / 2 * 0.85);
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(t * 5 * this.dir);
         ctx.fillStyle = '#FCD116';
         ctx.beginPath(); ctx.arc(0, 0, this.w / 2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.beginPath(); ctx.arc(-this.w * 0.12, -this.w * 0.12, this.w * 0.22, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 1.6; ctx.strokeStyle = outline;
+        ctx.beginPath(); ctx.arc(0, 0, this.w / 2, 0, Math.PI * 2); ctx.stroke();
         ctx.strokeStyle = '#CE1126'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.moveTo(-this.w / 2, 0); ctx.lineTo(this.w / 2, 0); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0, -this.w / 2); ctx.lineTo(0, this.w / 2); ctx.stroke();
         ctx.restore();
         break;
       case 'charger': {
+        drawGroundShadow(ctx, cx, sy + this.h + 1, this.w / 2 * 0.85);
         const flash = this.state === 'telegraph' && Math.floor(t * 12) % 2 === 0;
         const chargeMoving = this.state === 'charging';
         const legPhase = t * (chargeMoving ? 22 : 6) + this.startX * 0.02;
-        drawCreatureLegs(ctx, cx, cy + this.h / 2, this.w / 2, this.h * 0.5, legPhase, '#111', 2, true);
+        drawCreatureLegs(ctx, cx, cy + this.h / 2, this.w / 2, this.h * 0.5, legPhase, '#000', 2, true);
         ctx.fillStyle = flash ? '#ffcc00' : '#222';
         ctx.beginPath(); ctx.ellipse(cx, cy, this.w / 2, this.h / 2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.beginPath(); ctx.ellipse(cx - this.w * 0.15, cy - this.h * 0.22, this.w * 0.26, this.h * 0.18, -0.3, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.beginPath(); ctx.ellipse(cx, cy, this.w / 2, this.h / 2, 0, 0, Math.PI * 2); ctx.stroke();
         ctx.fillStyle = '#FCD116';
         for (let i = 0; i < 3; i++) {
           ctx.beginPath();

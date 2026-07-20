@@ -178,9 +178,15 @@ class Player {
     const shinAngle = hipAngle + kneeBend;
     const footX = kneeX + Math.sin(shinAngle) * shin;
     const footY = kneeY + Math.cos(shinAngle) * shin;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(0,0,0,0.32)';
+    ctx.lineWidth = 7.2;
+    ctx.beginPath();
+    ctx.moveTo(hipX, hipY); ctx.lineTo(kneeX, kneeY); ctx.lineTo(footX, footY);
+    ctx.stroke();
     ctx.strokeStyle = '#3a2a1a';
     ctx.lineWidth = 5.5;
-    ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(hipX, hipY); ctx.lineTo(kneeX, kneeY); ctx.lineTo(footX, footY);
     ctx.stroke();
@@ -209,9 +215,15 @@ class Player {
     const foreAngle = shAngle + elbowBend;
     const handX = elbowX + Math.sin(foreAngle) * lower;
     const handY = elbowY + Math.cos(foreAngle) * lower;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 6.0;
+    ctx.beginPath();
+    ctx.moveTo(shX, shY); ctx.lineTo(elbowX, elbowY); ctx.lineTo(handX, handY);
+    ctx.stroke();
     ctx.strokeStyle = '#c99a6a';
     ctx.lineWidth = 4.5;
-    ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(shX, shY); ctx.lineTo(elbowX, elbowY); ctx.lineTo(handX, handY);
     ctx.stroke();
@@ -280,12 +292,16 @@ class Player {
     const shoulderY = sy + 20 + squat;
     const legPhase = this.animTimer * 11;
 
+    // grounded contact shadow -- keeps the character from feeling like it's
+    // floating over a flat-color background
+    if (this.onGround) drawGroundShadow(ctx, cx, sy + this.h + 1, this.w * 0.5);
+
     // legs (drawn behind torso)
     this._drawLeg(ctx, cx - 4, hipY, legPhase, 0, facing);
     this._drawLeg(ctx, cx + 4, hipY, legPhase + Math.PI, 1, facing);
 
-    // torso (softly rounded silhouette, flat cartoon shading)
-    ctx.fillStyle = this.starPowerTimer > 0 ? `hsl(${(t * 300) % 360},80%,55%)` : '#009E49';
+    // torso (softly rounded silhouette, flat cartoon shading + outline)
+    const torsoColor = this.starPowerTimer > 0 ? `hsl(${(t * 300) % 360},80%,55%)` : '#009E49';
     const tw = this.w - 8, th = this.h - 27;
     const tx = cx - tw / 2 + lean * 0.4;
     ctx.beginPath();
@@ -294,12 +310,18 @@ class Player {
     ctx.lineTo(tx + tw - 1, shoulderY + th);
     ctx.quadraticCurveTo(tx + tw + 2, shoulderY + th / 2, tx + tw, shoulderY);
     ctx.closePath();
+    ctx.fillStyle = torsoColor;
     ctx.fill();
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.stroke();
     // gold sash
     ctx.fillStyle = '#FCD116';
     ctx.fillRect(tx, shoulderY + th * 0.42, tw, 5);
-    // subtle shading for depth
-    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    // rounded highlight + shadow for a touch of volume instead of flat color
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.beginPath(); ctx.ellipse(tx + tw * 0.3, shoulderY + th * 0.28, tw * 0.28, th * 0.22, -0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.14)';
     ctx.fillRect(tx + tw - 4, shoulderY, 4, th);
 
     // arms (front arm swipes with the cutlass when active)
@@ -316,6 +338,9 @@ class Player {
     const headCx = cx + lean * 0.6;
     ctx.fillStyle = '#c99a6a';
     ctx.beginPath(); ctx.arc(headCx, headCy, 10.5, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath(); ctx.arc(headCx, headCy, 10.5, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#c99a6a';
     ctx.beginPath(); ctx.arc(headCx - facing * 9.5, headCy + 2, 2.1, 0, Math.PI * 2); ctx.fill();
     // hair
     ctx.fillStyle = '#2a1c10';
@@ -324,6 +349,10 @@ class Player {
     ctx.fillStyle = '#CE1126';
     ctx.beginPath(); ctx.arc(headCx, headCy - 2, 8.6, Math.PI * 0.92, Math.PI * 2.08); ctx.fill();
     ctx.fillRect(headCx - 8.6, headCy - 4, 17.2, 4);
+    ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath(); ctx.arc(headCx, headCy - 2, 8.6, Math.PI * 0.92, Math.PI * 2.08); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.beginPath(); ctx.ellipse(headCx - 3, headCy - 5, 3, 2, -0.3, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#FCD116';
     ctx.beginPath(); ctx.arc(headCx, headCy - 6, 2, 0, Math.PI * 2); ctx.fill();
     // eyes
