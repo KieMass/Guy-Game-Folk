@@ -915,10 +915,32 @@ function drawClockTower(ctx, sx, groundY) {
     ctx.arc(sx + Math.sin(ang) * (clockR - 3), topY + 32 - Math.cos(ang) * (clockR - 3), 0.9, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.lineWidth = 2; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(sx, topY + 32); ctx.lineTo(sx, topY + 32 - clockR * 0.55); ctx.stroke();
-  ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(sx, topY + 32); ctx.lineTo(sx + clockR * 0.7, topY + 32); ctx.stroke();
+  // hands show the player's real, current local time (read straight off the
+  // browser's clock), so the tower doubles as a little functioning clock
+  const cy = topY + 32;
+  const now = new Date();
+  const hourAngle = ((now.getHours() % 12) + now.getMinutes() / 60) / 12 * Math.PI * 2;
+  const minuteAngle = (now.getMinutes() + now.getSeconds() / 60) / 60 * Math.PI * 2;
+  const secondAngle = now.getSeconds() / 60 * Math.PI * 2;
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(sx, cy);
+  ctx.lineTo(sx + Math.sin(hourAngle) * clockR * 0.5, cy - Math.cos(hourAngle) * clockR * 0.5);
+  ctx.stroke();
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(sx, cy);
+  ctx.lineTo(sx + Math.sin(minuteAngle) * clockR * 0.76, cy - Math.cos(minuteAngle) * clockR * 0.76);
+  ctx.stroke();
+  ctx.strokeStyle = '#CE1126';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(sx, cy);
+  ctx.lineTo(sx + Math.sin(secondAngle) * clockR * 0.82, cy - Math.cos(secondAngle) * clockR * 0.82);
+  ctx.stroke();
+  ctx.fillStyle = '#2a2a2a';
+  ctx.beginPath(); ctx.arc(sx, cy, 1.6, 0, Math.PI * 2); ctx.fill();
   // red octagonal-ish roof
   ctx.fillStyle = '#CE1126';
   ctx.beginPath();
