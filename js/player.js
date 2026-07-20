@@ -226,18 +226,15 @@ class Player {
     ctx.beginPath();
     ctx.moveTo(shX, shY); ctx.lineTo(elbowX, elbowY); ctx.lineTo(handX, handY);
     ctx.stroke();
-    // gold sleeve
+    // gold sleeve runs the full arm -- kept as one continuous stroke so the
+    // elbow doesn't get its own rounded end-cap (that was reading as a
+    // second, smaller "hand" at the elbow, doubling up per arm)
     ctx.strokeStyle = '#FCD116';
     ctx.lineWidth = 4.6;
     ctx.beginPath();
-    ctx.moveTo(shX, shY); ctx.lineTo(elbowX, elbowY);
+    ctx.moveTo(shX, shY); ctx.lineTo(elbowX, elbowY); ctx.lineTo(handX, handY);
     ctx.stroke();
-    // white glove forearm + hand, Mario-style
-    ctx.strokeStyle = '#f5f5f0';
-    ctx.lineWidth = 4.2;
-    ctx.beginPath();
-    ctx.moveTo(elbowX, elbowY); ctx.lineTo(handX, handY);
-    ctx.stroke();
+    // white glove -- just the hand itself
     ctx.fillStyle = '#f5f5f0';
     ctx.beginPath(); ctx.arc(handX, handY, 3.1, 0, Math.PI * 2); ctx.fill();
     ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.25)';

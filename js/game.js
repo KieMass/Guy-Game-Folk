@@ -27,6 +27,7 @@ const Game = {
   treasureCount: 0,
   currentLevel: null,
   currentBossDef: null, bossState: null, bossDefeatTimer: 0,
+  fireworks: [], celebrationStarted: false,
   player: null,
   camera: { x: 0, y: 0 },
   particles: [],
@@ -250,6 +251,8 @@ function loadBoss(idx) {
   Game.camera = { x: 0, y: 0 };
   Game.projectiles = []; Game.particles = []; Game.gemPopup = null; Game.toast = null;
   Game.bossDefeatTimer = 0;
+  Game.fireworks = [];
+  Game.celebrationStarted = false;
   Game.prevOnGround = false;
   showBossIntro(def, idx);
 }
@@ -423,9 +426,16 @@ function updateBoss(dt) {
   }
 
   if (boss.defeated) {
+    if (!Game.celebrationStarted) {
+      Game.celebrationStarted = true;
+      startBossCelebration();
+    }
     Game.bossDefeatTimer += dt;
-    if (Game.bossDefeatTimer > 1.6) {
+    updateFireworks(dt);
+    if (Game.bossDefeatTimer > 4.2) {
       Game.bossDefeatTimer = 0;
+      Game.celebrationStarted = false;
+      Game.fireworks = [];
       addScore(200);
       advanceCampaign();
       return;
@@ -434,6 +444,111 @@ function updateBoss(dt) {
 
   updateParticles(dt);
   updateToast(dt);
+}
+
+// ---------------- boss-victory fireworks ----------------
+// A short celebration once a boss is defeated: staggered firework bursts
+// across the sky, each popping into a sparkle shower plus a fading Guyanese
+// symbol (the flag, its golden arrowhead, a stylized coat-of-arms shield,
+// or a plain star) so it reads as a proper "you won!" moment.
+function startBossCelebration() {
+  Game.fireworks = [];
+  const shapes = ['flag', 'arrowhead', 'shield', 'star', 'flag', 'star'];
+  const spots = [
+    { x: 170, y: 110 }, { x: 320, y: 75 }, { x: 480, y: 125 },
+    { x: 640, y: 85 }, { x: 790, y: 130 }, { x: 260, y: 175 },
+  ];
+  for (let i = 0; i < spots.length; i++) {
+    Game.fireworks.push({
+      x: spots[i].x + (Math.random() - 0.5) * 40,
+      y: spots[i].y + (Math.random() - 0.5) * 20,
+      shape: shapes[i % shapes.length],
+      delay: i * 0.5 + Math.random() * 0.15,
+      exploded: false, life: 0, maxLife: 1.6,
+    });
+  }
+}
+
+function updateFireworks(dt) {
+  const colors = ['#009E49', '#FCD116', '#CE1126', '#ffffff'];
+  for (const fw of Game.fireworks) {
+    if (!fw.exploded) {
+      fw.delay -= dt;
+      if (fw.delay <= 0) {
+        fw.exploded = true;
+        fw.life = fw.maxLife;
+        spawnBurst(fw.x, fw.y, colors[Math.floor(Math.random() * colors.length)], 20);
+        spawnBurst(fw.x, fw.y, '#ffffff', 8);
+      }
+    } else {
+      fw.life -= dt;
+    }
+  }
+  Game.fireworks = Game.fireworks.filter((fw) => !fw.exploded || fw.life > 0);
+}
+
+function drawFireworks(ctx) {
+  for (const fw of Game.fireworks) {
+    if (!fw.exploded) continue;
+    const alpha = Math.max(0, Math.min(1, fw.life / fw.maxLife));
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(fw.x, fw.y);
+    ctx.scale(0.7 + (1 - alpha) * 0.5, 0.7 + (1 - alpha) * 0.5);
+    drawFireworkSymbol(ctx, fw.shape);
+    ctx.restore();
+  }
+}
+
+function drawFireworkSymbol(ctx, shape) {
+  switch (shape) {
+    case 'flag': {
+      const w = 36, h = 24;
+      ctx.fillStyle = '#009E49'; ctx.fillRect(-w / 2, -h / 2, w, h);
+      ctx.fillStyle = '#FCD116';
+      ctx.beginPath(); ctx.moveTo(-w / 2, -h / 2); ctx.lineTo(-w / 2 + w * 0.65, 0); ctx.lineTo(-w / 2, h / 2); ctx.fill();
+      ctx.fillStyle = '#CE1126';
+      ctx.beginPath(); ctx.moveTo(-w / 2, -h / 2 + 4); ctx.lineTo(-w / 2 + w * 0.35, 0); ctx.lineTo(-w / 2, h / 2 - 4); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1; ctx.strokeRect(-w / 2, -h / 2, w, h);
+      break;
+    }
+    case 'arrowhead': {
+      ctx.fillStyle = '#FCD116';
+      ctx.beginPath(); ctx.moveTo(-16, -16); ctx.lineTo(16, 0); ctx.lineTo(-16, 16); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1; ctx.stroke();
+      break;
+    }
+    case 'shield': {
+      ctx.fillStyle = '#FCD116';
+      ctx.beginPath();
+      ctx.moveTo(0, -18); ctx.lineTo(14, -12); ctx.lineTo(14, 6);
+      ctx.quadraticCurveTo(14, 18, 0, 24); ctx.quadraticCurveTo(-14, 18, -14, 6); ctx.lineTo(-14, -12);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#7a4a23'; ctx.lineWidth = 1.6; ctx.stroke();
+      ctx.fillStyle = '#009E49';
+      ctx.beginPath();
+      ctx.moveTo(0, -12); ctx.lineTo(9, -8); ctx.lineTo(9, 4);
+      ctx.quadraticCurveTo(9, 12, 0, 16); ctx.quadraticCurveTo(-9, 12, -9, 4); ctx.lineTo(-9, -8);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#CE1126'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(0, 12); ctx.stroke();
+      break;
+    }
+    case 'star':
+    default: {
+      ctx.fillStyle = shape === 'star' ? '#ffffff' : '#FCD116';
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const ang = -Math.PI / 2 + i * (Math.PI * 2 / 5);
+        const ang2 = ang + Math.PI / 5;
+        ctx.lineTo(Math.cos(ang) * 18, Math.sin(ang) * 18);
+        ctx.lineTo(Math.cos(ang2) * 7, Math.sin(ang2) * 7);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; ctx.stroke();
+      break;
+    }
+  }
 }
 
 // ---------------- gameplay helpers ----------------
@@ -743,6 +858,21 @@ function renderBoss() {
   Game.projectiles.forEach((p) => p.draw(ctx, camera));
   Game.player.draw(ctx, camera, Game.t);
   Game.particles.forEach((p) => p.draw(ctx, camera));
+  if (boss.defeated) {
+    drawFireworks(ctx);
+    const bannerIn = Math.min(1, Game.bossDefeatTimer / 0.4);
+    const bannerOut = Math.min(1, Math.max(0, (4.2 - Game.bossDefeatTimer) / 0.5));
+    ctx.save();
+    ctx.globalAlpha = Math.min(bannerIn, bannerOut);
+    ctx.font = 'bold 40px "Trebuchet MS", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#FCD116';
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 5;
+    ctx.strokeText(`${def.name} Defeated!`, CANVAS_W / 2, 80);
+    ctx.fillText(`${def.name} Defeated!`, CANVAS_W / 2, 80);
+    ctx.restore();
+  }
 }
 
 function drawFlag(ctx, x, groundY, camera) {
