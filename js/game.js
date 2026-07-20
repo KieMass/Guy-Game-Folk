@@ -877,43 +877,59 @@ function repeatWorld(camera, spacing, levelWidth, fn) {
 // cast-iron structure with a white/cream shaft, a red octagonal roof, and
 // four clock faces. sx is already camera-relative.
 function drawClockTower(ctx, sx, groundY) {
-  if (sx < -70 || sx > 1030) return;
-  const towerH = 175;
+  if (sx < -80 || sx > 1040) return;
+  const towerH = 185;
   const baseY = groundY - 34;
   const topY = baseY - towerH;
+  const halfW = 19;
+  const clockR = 21;
   ctx.save();
   // shaft, gently shaded for depth
-  const shaftGrad = ctx.createLinearGradient(sx - 17, 0, sx + 17, 0);
+  const shaftGrad = ctx.createLinearGradient(sx - halfW, 0, sx + halfW, 0);
   shaftGrad.addColorStop(0, '#e9e2cf');
   shaftGrad.addColorStop(0.5, '#f7f2e4');
   shaftGrad.addColorStop(1, '#d9d0b8');
   ctx.fillStyle = shaftGrad;
-  ctx.fillRect(sx - 17, topY, 34, towerH);
+  ctx.fillRect(sx - halfW, topY, halfW * 2, towerH);
   ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1;
-  ctx.strokeRect(sx - 17, topY, 34, towerH);
+  ctx.strokeRect(sx - halfW, topY, halfW * 2, towerH);
   // decorative trim bands
   ctx.fillStyle = 'rgba(0,0,0,0.1)';
-  ctx.fillRect(sx - 17, topY + towerH * 0.42, 34, 3);
-  ctx.fillRect(sx - 17, topY + towerH * 0.8, 34, 3);
+  ctx.fillRect(sx - halfW, topY + towerH * 0.46, halfW * 2, 3);
+  ctx.fillRect(sx - halfW, topY + towerH * 0.82, halfW * 2, 3);
+  // clock housing -- a touch wider than the shaft so the bigger face doesn't
+  // look like it's overhanging the tower
+  ctx.fillStyle = shadeColor('#e9e2cf', -6);
+  ctx.beginPath(); ctx.arc(sx, topY + 32, clockR + 4, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(sx, topY + 32, clockR + 4, 0, Math.PI * 2); ctx.stroke();
   // clock face
   ctx.fillStyle = '#fffdf5';
-  ctx.beginPath(); ctx.arc(sx, topY + 28, 16, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(sx, topY + 28, 16, 0, Math.PI * 2); ctx.stroke();
-  ctx.lineWidth = 1.6; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(sx, topY + 28); ctx.lineTo(sx, topY + 18); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(sx, topY + 28); ctx.lineTo(sx + 10, topY + 28); ctx.stroke();
+  ctx.beginPath(); ctx.arc(sx, topY + 32, clockR, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 2.4;
+  ctx.beginPath(); ctx.arc(sx, topY + 32, clockR, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#2a2a2a';
+  for (let i = 0; i < 12; i++) {
+    const ang = (i / 12) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(sx + Math.sin(ang) * (clockR - 3), topY + 32 - Math.cos(ang) * (clockR - 3), 0.9, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.lineWidth = 2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(sx, topY + 32); ctx.lineTo(sx, topY + 32 - clockR * 0.55); ctx.stroke();
+  ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(sx, topY + 32); ctx.lineTo(sx + clockR * 0.7, topY + 32); ctx.stroke();
   // red octagonal-ish roof
   ctx.fillStyle = '#CE1126';
   ctx.beginPath();
-  ctx.moveTo(sx - 22, topY); ctx.lineTo(sx - 14, topY - 14); ctx.lineTo(sx + 14, topY - 14);
-  ctx.lineTo(sx + 22, topY); ctx.lineTo(sx, topY - 40); ctx.closePath();
+  ctx.moveTo(sx - 25, topY); ctx.lineTo(sx - 16, topY - 16); ctx.lineTo(sx + 16, topY - 16);
+  ctx.lineTo(sx + 25, topY); ctx.lineTo(sx, topY - 45); ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; ctx.stroke();
   // gold finial
   ctx.fillStyle = '#FCD116';
-  ctx.beginPath(); ctx.arc(sx, topY - 42, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.fillRect(sx - 1, topY - 40, 2, 6);
+  ctx.beginPath(); ctx.arc(sx, topY - 47, 3.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(sx - 1, topY - 45, 2, 7);
   ctx.restore();
 }
 

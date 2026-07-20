@@ -377,9 +377,9 @@ class Player {
       this._drawArm(ctx, cx + 2, shoulderY, legPhase, facing);
     }
 
-    // head -- bigger and rounder, with a nose bump, mustache, and a capped
-    // brim, closer to a classic platformer-hero read while staying flag-gold/
-    // green/red instead of the reference's red-and-blue
+    // head -- bigger and rounder, with a nose bump and a backwards-turned
+    // capped brim, closer to a classic platformer-hero read while staying
+    // flag-gold/green/red instead of the reference's red-and-blue
     const headR = 12.5;
     const headCy = sy + 13 + squat + lean * 0.15;
     const headCx = cx + lean * 0.6;
@@ -393,11 +393,6 @@ class Player {
     ctx.beginPath(); ctx.arc(headCx + facing * 10.5, headCy + 4, 3.6, 0, Math.PI * 2); ctx.stroke();
     ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(0,0,0,0.28)';
     ctx.beginPath(); ctx.arc(headCx, headCy, headR, 0, Math.PI * 2); ctx.stroke();
-    // mustache
-    ctx.fillStyle = '#2a1c10';
-    ctx.beginPath();
-    ctx.ellipse(headCx + facing * 5.5, headCy + 8, 6.4, 2.6, facing * 0.12, 0, Math.PI * 2);
-    ctx.fill();
     // hair (back/top, behind the cap)
     ctx.fillStyle = '#2a1c10';
     ctx.beginPath(); ctx.arc(headCx, headCy - 1, headR, Math.PI, Math.PI * 2); ctx.fill();
@@ -407,11 +402,11 @@ class Player {
     ctx.fillRect(headCx - (headR - 1.6), headCy - 4, (headR - 1.6) * 2, 4.5);
     ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(0,0,0,0.28)';
     ctx.beginPath(); ctx.arc(headCx, headCy - 2, headR - 1.6, Math.PI * 0.92, Math.PI * 2.08); ctx.stroke();
-    // cap brim, pointing the way the player is facing
+    // cap brim, turned backwards (opposite the way the player is facing)
     ctx.fillStyle = '#CE1126';
-    ctx.beginPath(); ctx.ellipse(headCx + facing * 8, headCy + 1.5, 7.5, 2.8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(headCx - facing * 8, headCy + 1.5, 7.5, 2.8, 0, 0, Math.PI * 2); ctx.fill();
     ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.beginPath(); ctx.ellipse(headCx + facing * 8, headCy + 1.5, 7.5, 2.8, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(headCx - facing * 8, headCy + 1.5, 7.5, 2.8, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.22)';
     ctx.beginPath(); ctx.ellipse(headCx - 3, headCy - 5, 3, 2, -0.3, 0, Math.PI * 2); ctx.fill();
     // gold emblem on the cap (nods to the flag's golden arrowhead)
