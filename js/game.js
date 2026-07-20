@@ -7,6 +7,7 @@
 */
 
 const CANVAS_W = 960, CANVAS_H = 540;
+const ARROW_SPEED = 480;
 
 const CAMPAIGN = (() => {
   const seq = [];
@@ -69,6 +70,12 @@ function init() {
     handleKeyAction(e.code);
   });
   window.addEventListener('keyup', (e) => { Game.keys[e.code] = false; });
+  // Safety net: if focus is lost while a key is physically held (alt-tab,
+  // a notification, switching apps on Android) the browser can skip the
+  // keyup entirely, leaving that direction "stuck" down forever -- which
+  // reads as the player auto-running. Clearing all keys on blur/hide fixes it.
+  window.addEventListener('blur', () => { Game.keys = {}; });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) Game.keys = {}; });
 
   const btnStart = document.getElementById('btn-start');
   if (btnStart) btnStart.addEventListener('click', () => setState('instructions'));
@@ -100,20 +107,41 @@ function setupTouchControls() {
   if (!isTouch || !panel) return;
   Game.isTouch = true;
 
+  // Tracks which key each active touch pointer is driving, keyed by pointerId.
+  // Release is handled at the window level (not just on the source element)
+  // because pointer capture can be lost mid-press on some Android WebViews --
+  // when that happened, the element's own pointerup/pointerleave never fired
+  // and the direction stayed "down" forever, which read as the player
+  // auto-running.
+  const activePointers = new Map();
+
   const bind = (id, keyCode) => {
     const el = document.getElementById(id);
     if (!el) return;
-    const press = (e) => { e.preventDefault(); Game.keys[keyCode] = true; el.classList.add('touch-active'); };
-    const release = (e) => { if (e) e.preventDefault(); Game.keys[keyCode] = false; el.classList.remove('touch-active'); };
-    el.addEventListener('pointerdown', press);
-    el.addEventListener('pointerup', release);
-    el.addEventListener('pointercancel', release);
-    el.addEventListener('pointerleave', release);
+    el.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      Game.keys[keyCode] = true;
+      el.classList.add('touch-active');
+      activePointers.set(e.pointerId, { keyCode, el });
+      if (el.setPointerCapture) { try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } }
+    });
   };
   bind('btn-left', 'ArrowLeft');
   bind('btn-right', 'ArrowRight');
   bind('btn-jump', 'Space');
   bind('btn-swipe', 'KeyX');
+
+  const releasePointer = (e) => {
+    const entry = activePointers.get(e.pointerId);
+    if (!entry) return;
+    e.preventDefault();
+    Game.keys[entry.keyCode] = false;
+    entry.el.classList.remove('touch-active');
+    activePointers.delete(e.pointerId);
+  };
+  window.addEventListener('pointerup', releasePointer);
+  window.addEventListener('pointercancel', releasePointer);
+  window.addEventListener('pointerleave', releasePointer);
 
   const btnPause = document.getElementById('btn-pause-touch');
   if (btnPause) btnPause.addEventListener('click', (e) => { e.preventDefault(); togglePause(); });
@@ -214,7 +242,24 @@ function loadStage(pos) {
   else if (stage.type === 'boss') loadBoss(stage.idx);
   else if (stage.type === 'victory') showVictory();
 }
-function advanceCampaign() { loadStage(Game.campaignPos + 1); }
+// A power-up survives into the next level/boss as long as the player still
+// has it when the stage ends -- only losing it (its timer runs out, or the
+// player dies and loses their remaining lives) resets it. Simply finishing
+// a stage does not, so we snapshot it off the outgoing player and reapply
+// it to the fresh one loadStage() creates.
+function carryOverPowerUps(from, to) {
+  if (!from || !to) return;
+  if (from.hasCutlass) { to.hasCutlass = true; to.cutlassTimer = from.cutlassTimer; }
+  if (from.hasBow) { to.hasBow = true; to.bowTimer = from.bowTimer; }
+  if (from.starPowerTimer > 0) to.starPowerTimer = from.starPowerTimer;
+  if (from.speedBoostTimer > 0) to.speedBoostTimer = from.speedBoostTimer;
+}
+
+function advanceCampaign() {
+  const prevPlayer = Game.player;
+  loadStage(Game.campaignPos + 1);
+  carryOverPowerUps(prevPlayer, Game.player);
+}
 
 // ---------------- level / boss loading ----------------
 function loadLevel(idx) {
@@ -307,6 +352,19 @@ function getInput() {
   };
 }
 
+// Spawns a player arrow projectile from the player's facing side, if the
+// bow's attack cooldown just fired one (see Player.update's arrowRequested).
+function fireArrowIfRequested(player, pushFn) {
+  if (!player.arrowRequested) return;
+  const dir = player.facing;
+  pushFn(new Projectile({
+    x: dir > 0 ? player.x + player.w : player.x,
+    y: player.y + player.h * 0.42,
+    vx: dir * ARROW_SPEED, vy: 0, gravity: 0,
+    kind: 'arrow', owner: 'player', life: 1.1, w: 16, h: 6,
+  }));
+}
+
 // ---------------- gameplay update ----------------
 function updatePlaying(dt) {
   const level = Game.currentLevel, player = Game.player;
@@ -325,6 +383,7 @@ function updatePlaying(dt) {
   player.update(dt, getInput(), level.platforms, Game.t);
   if (player.onGround && !Game.prevOnGround) spawnDust(player.x + player.w / 2, player.y + player.h);
   Game.prevOnGround = player.onGround;
+  fireArrowIfRequested(player, (p) => Game.projectiles.push(p));
 
   // hazards (instant fail regardless of invincibility)
   for (const hz of level.hazards) {
@@ -352,6 +411,15 @@ function updatePlaying(dt) {
       player.vy = -420;
     } else {
       hurtPlayerFromContact();
+    }
+  }
+
+  // player arrows vs enemies
+  for (const p of Game.projectiles) {
+    if (p.owner !== 'player' || p.dead) continue;
+    for (const e of level.enemies) {
+      if (!e.alive) continue;
+      if (aabbOverlap(p, e)) { defeatEnemy(e); p.dead = true; break; }
     }
   }
 
@@ -397,6 +465,7 @@ function updateBoss(dt) {
   player.x = clamp(player.x, 10, ARENA_W - player.w - 10);
   if (player.onGround && !Game.prevOnGround) spawnDust(player.x + player.w / 2, player.y + player.h);
   Game.prevOnGround = player.onGround;
+  fireArrowIfRequested(player, (p) => Game.projectiles.push(p));
 
   if (!boss.defeated) {
     for (const r of def.getDangerRects(boss)) {
@@ -417,6 +486,17 @@ function updateBoss(dt) {
         player.vy = -420;
         spawnBurst(target.x + target.w / 2, target.y + target.h / 2, '#FCD116', 10);
         break;
+      }
+    }
+    for (const p of Game.projectiles) {
+      if (p.owner !== 'player' || p.dead) continue;
+      for (const target of targets) {
+        if (aabbOverlap(p, target)) {
+          def.onTargetHit(boss, target.id);
+          spawnBurst(target.x + target.w / 2, target.y + target.h / 2, '#FCD116', 10);
+          p.dead = true;
+          break;
+        }
       }
     }
     for (const hz of (def.arenaHazards || [])) {
@@ -591,6 +671,10 @@ function collectItem(c, level) {
     case 'speedboost':
       Game.player.grantSpeedBoost(); addScore(20);
       showToast('Speed Boost!');
+      break;
+    case 'bow':
+      Game.player.grantBow(); addScore(5);
+      showToast('Bow & Arrow! Press X / Shift to shoot');
       break;
     case 'extralife':
       Game.lives = Math.min(MAX_LIVES, Game.lives + 1);
@@ -800,6 +884,7 @@ function updateHUD() {
   if (Game.player) {
     const pu = [];
     if (Game.player.hasCutlass) pu.push(`🗡${Math.ceil(Game.player.cutlassTimer)}s`);
+    if (Game.player.hasBow) pu.push(`🏹${Math.ceil(Game.player.bowTimer)}s`);
     if (Game.player.starPowerTimer > 0) pu.push(`⭐${Math.ceil(Game.player.starPowerTimer)}s`);
     if (Game.player.speedBoostTimer > 0) pu.push(`⚡${Math.ceil(Game.player.speedBoostTimer)}s`);
     if (pu.length) {
@@ -808,6 +893,8 @@ function updateHUD() {
     } else {
       puEl.classList.add('hidden');
     }
+    const btnSwipe = document.getElementById('btn-swipe');
+    if (btnSwipe) btnSwipe.textContent = Game.player.hasBow ? '🏹' : '🗡';
   }
 }
 

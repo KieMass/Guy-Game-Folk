@@ -326,6 +326,30 @@ class Collectible {
         ctx.lineWidth = 5;
         ctx.beginPath(); ctx.moveTo(cx - 8, cy + 10); ctx.lineTo(cx - 13, cy + 15); ctx.stroke();
         break;
+      case 'bow': {
+        ctx.shadowColor = '#e8a33d';
+        ctx.shadowBlur = 10;
+        ctx.strokeStyle = '#7a4a23';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(cx - 2, cy, 11, -Math.PI * 0.38, Math.PI * 0.38);
+        ctx.stroke();
+        ctx.strokeStyle = '#e8e8e8';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(cx - 2 + Math.cos(-Math.PI * 0.38) * 11, cy + Math.sin(-Math.PI * 0.38) * 11);
+        ctx.lineTo(cx - 2 + Math.cos(Math.PI * 0.38) * 11, cy + Math.sin(Math.PI * 0.38) * 11);
+        ctx.stroke();
+        ctx.strokeStyle = '#FCD116';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 6, cy); ctx.stroke();
+        ctx.fillStyle = '#FCD116';
+        ctx.beginPath();
+        ctx.moveTo(cx + 6, cy); ctx.lineTo(cx + 1, cy - 3); ctx.lineTo(cx + 1, cy + 3);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      }
       case 'extralife': {
         // a bright heart charm -- the "1-up" of Guyana Quest
         ctx.shadowColor = '#ff3355';
@@ -434,6 +458,26 @@ class Projectile {
         ctx.fillStyle = '#FCD116';
         ctx.beginPath(); ctx.arc(sx, sy, 7, 0, Math.PI * 2); ctx.fill();
         break;
+      case 'arrow': {
+        const dir = this.vx >= 0 ? 1 : -1;
+        ctx.strokeStyle = '#7a4a23';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(sx - 10 * dir, sy); ctx.lineTo(sx + 7 * dir, sy); ctx.stroke();
+        ctx.fillStyle = '#FCD116';
+        ctx.beginPath();
+        ctx.moveTo(sx + 12 * dir, sy);
+        ctx.lineTo(sx + 5 * dir, sy - 4);
+        ctx.lineTo(sx + 5 * dir, sy + 4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#CE1126';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(sx - 10 * dir, sy - 3); ctx.lineTo(sx - 6 * dir, sy); ctx.lineTo(sx - 10 * dir, sy + 3);
+        ctx.stroke();
+        break;
+      }
       default:
         ctx.fillStyle = '#ffffff';
         ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2); ctx.fill();

@@ -24,6 +24,10 @@ class Player {
     this.invincible = 0;
     this.hasCutlass = false;
     this.cutlassTimer = 0;
+    this.hasBow = false;
+    this.bowTimer = 0;
+    this.shootCooldown = 0;
+    this.arrowRequested = false;
     this.starPowerTimer = 0;
     this.speedBoostTimer = 0;
     this.swipeTimer = 0;
@@ -47,7 +51,10 @@ class Player {
     return true;
   }
 
-  grantCutlass() { this.hasCutlass = true; this.cutlassTimer = 14; }
+  // Cutlass and bow are alternate weapons -- only one is equipped at a time,
+  // so picking one up replaces the other.
+  grantCutlass() { this.hasCutlass = true; this.cutlassTimer = 14; this.hasBow = false; this.bowTimer = 0; }
+  grantBow() { this.hasBow = true; this.bowTimer = 14; this.hasCutlass = false; this.cutlassTimer = 0; }
   grantStarPower() { this.starPowerTimer = 8; }
   grantSpeedBoost() { this.speedBoostTimer = 8; }
 
@@ -66,6 +73,10 @@ class Player {
     if (this.hasCutlass) {
       this.cutlassTimer -= dt;
       if (this.cutlassTimer <= 0) this.hasCutlass = false;
+    }
+    if (this.hasBow) {
+      this.bowTimer -= dt;
+      if (this.bowTimer <= 0) this.hasBow = false;
     }
 
     // horizontal movement: only moves while a direction is actively held
@@ -96,8 +107,14 @@ class Player {
     }
     if (this.onGround) this.jumping = false;
 
-    // swipe (only meaningful while cutlass power-up is active)
-    if (this.hasCutlass && input.swipeJustPressed && this.swipeCooldown <= 0) {
+    // attack button: fires an arrow if the bow is equipped, otherwise swipes
+    // with the cutlass if that's equipped instead (only one weapon at a time)
+    this.shootCooldown = Math.max(0, this.shootCooldown - dt);
+    this.arrowRequested = false;
+    if (this.hasBow && input.swipeJustPressed && this.shootCooldown <= 0) {
+      this.shootCooldown = 0.4;
+      this.arrowRequested = true;
+    } else if (this.hasCutlass && input.swipeJustPressed && this.swipeCooldown <= 0) {
       this.swipeTimer = 0.22;
       this.swipeCooldown = 0.4;
     }
