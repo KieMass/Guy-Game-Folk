@@ -171,7 +171,7 @@ class Player {
   }
 
   _drawLeg(ctx, hipX, hipY, phase, legIndex, facing) {
-    const thigh = 12.5, shin = 13;
+    const thigh = 11.5, shin = 12;
     const { hipAngle, kneeBend } = this._legPose(phase, legIndex, facing);
     const kneeX = hipX + Math.sin(hipAngle) * thigh;
     const kneeY = hipY + Math.cos(hipAngle) * thigh;
@@ -181,21 +181,25 @@ class Player {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = 'rgba(0,0,0,0.32)';
-    ctx.lineWidth = 7.2;
+    ctx.lineWidth = 8.2;
     ctx.beginPath();
     ctx.moveTo(hipX, hipY); ctx.lineTo(kneeX, kneeY); ctx.lineTo(footX, footY);
     ctx.stroke();
-    ctx.strokeStyle = '#3a2a1a';
-    ctx.lineWidth = 5.5;
+    // overalls-colored pant leg (stockier than before, matches the bib)
+    ctx.strokeStyle = '#00893f';
+    ctx.lineWidth = 6.6;
     ctx.beginPath();
     ctx.moveTo(hipX, hipY); ctx.lineTo(kneeX, kneeY); ctx.lineTo(footX, footY);
     ctx.stroke();
-    ctx.fillStyle = '#241a10';
-    ctx.beginPath(); ctx.ellipse(footX + facing * 2.5, footY, 4.6, 3, 0, 0, Math.PI * 2); ctx.fill();
+    // big rounded shoe, Mario-style
+    ctx.fillStyle = '#4a2f18';
+    ctx.beginPath(); ctx.ellipse(footX + facing * 3, footY + 1, 6, 3.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.ellipse(footX + facing * 3, footY + 1, 6, 3.6, 0, 0, Math.PI * 2); ctx.stroke();
   }
 
   _drawArm(ctx, shX, shY, phase, facing) {
-    const upper = 10, lower = 11;
+    const upper = 9, lower = 10;
     let shAngle, elbowBend;
     if (this.state === 'run') {
       shAngle = Math.sin(phase) * 0.9;
@@ -218,17 +222,26 @@ class Player {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-    ctx.lineWidth = 6.0;
+    ctx.lineWidth = 6.2;
     ctx.beginPath();
     ctx.moveTo(shX, shY); ctx.lineTo(elbowX, elbowY); ctx.lineTo(handX, handY);
     ctx.stroke();
-    ctx.strokeStyle = '#c99a6a';
-    ctx.lineWidth = 4.5;
+    // gold sleeve
+    ctx.strokeStyle = '#FCD116';
+    ctx.lineWidth = 4.6;
     ctx.beginPath();
-    ctx.moveTo(shX, shY); ctx.lineTo(elbowX, elbowY); ctx.lineTo(handX, handY);
+    ctx.moveTo(shX, shY); ctx.lineTo(elbowX, elbowY);
     ctx.stroke();
-    ctx.fillStyle = '#c99a6a';
-    ctx.beginPath(); ctx.arc(handX, handY, 2.7, 0, Math.PI * 2); ctx.fill();
+    // white glove forearm + hand, Mario-style
+    ctx.strokeStyle = '#f5f5f0';
+    ctx.lineWidth = 4.2;
+    ctx.beginPath();
+    ctx.moveTo(elbowX, elbowY); ctx.lineTo(handX, handY);
+    ctx.stroke();
+    ctx.fillStyle = '#f5f5f0';
+    ctx.beginPath(); ctx.arc(handX, handY, 3.1, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.arc(handX, handY, 3.1, 0, Math.PI * 2); ctx.stroke();
   }
 
   _drawSwipeArm(ctx, shX, shY, facing) {
@@ -236,10 +249,12 @@ class Player {
     const ang = facing > 0 ? -1.1 + p * 2.0 : Math.PI + 1.1 - p * 2.0;
     const handX = shX + Math.cos(ang) * 19;
     const handY = shY + 4 + Math.sin(ang) * 19;
-    ctx.strokeStyle = '#c99a6a';
+    ctx.strokeStyle = '#FCD116';
     ctx.lineWidth = 4.5;
     ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(shX, shY); ctx.lineTo(handX, handY); ctx.stroke();
+    ctx.fillStyle = '#f5f5f0';
+    ctx.beginPath(); ctx.arc(handX, handY, 3, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#e6e6e6';
     ctx.lineWidth = 3.5;
     const bladeAng = ang - facing * 0.5;
@@ -288,8 +303,8 @@ class Player {
     else if (this.state === 'fall') { squat = 2; lean = facing * 1; }
     else { squat = Math.sin(this.animTimer * 2.4) * 0.6; }
 
-    const hipY = sy + this.h - 17;
-    const shoulderY = sy + 20 + squat;
+    const hipY = sy + this.h - 15;
+    const shoulderY = sy + 23 + squat;
     const legPhase = this.animTimer * 11;
 
     // grounded contact shadow -- keeps the character from feeling like it's
@@ -300,28 +315,57 @@ class Player {
     this._drawLeg(ctx, cx - 4, hipY, legPhase, 0, facing);
     this._drawLeg(ctx, cx + 4, hipY, legPhase + Math.PI, 1, facing);
 
-    // torso (softly rounded silhouette, flat cartoon shading + outline)
-    const torsoColor = this.starPowerTimer > 0 ? `hsl(${(t * 300) % 360},80%,55%)` : '#009E49';
-    const tw = this.w - 8, th = this.h - 27;
+    // torso: a gold long-sleeve shirt with green dungaree-style overalls on
+    // top (straps + buttons), evoking a classic platformer hero silhouette
+    // while keeping the Guyana flag palette instead of red/blue.
+    const overallColor = this.starPowerTimer > 0 ? `hsl(${(t * 300) % 360},75%,42%)` : '#009E49';
+    const shirtColor = this.starPowerTimer > 0 ? `hsl(${(t * 300 + 55) % 360},85%,62%)` : '#FCD116';
+    const tw = this.w - 4, th = this.h - 31;
     const tx = cx - tw / 2 + lean * 0.4;
+
+    // shirt (wider, peeks out past the overalls at the shoulders/sides)
     ctx.beginPath();
-    ctx.moveTo(tx, shoulderY);
+    ctx.moveTo(tx, shoulderY + 1);
     ctx.quadraticCurveTo(tx - 2, shoulderY + th / 2, tx + 1, shoulderY + th);
     ctx.lineTo(tx + tw - 1, shoulderY + th);
-    ctx.quadraticCurveTo(tx + tw + 2, shoulderY + th / 2, tx + tw, shoulderY);
+    ctx.quadraticCurveTo(tx + tw + 2, shoulderY + th / 2, tx + tw, shoulderY + 1);
     ctx.closePath();
-    ctx.fillStyle = torsoColor;
+    ctx.fillStyle = shirtColor;
     ctx.fill();
     ctx.lineWidth = 1.6;
     ctx.strokeStyle = 'rgba(0,0,0,0.3)';
     ctx.stroke();
-    // gold sash
+
+    // overalls bib (narrower, sits centered on top of the shirt)
+    const inset = tw * 0.14;
+    const bibTop = shoulderY + th * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(tx + inset, bibTop);
+    ctx.lineTo(tx + tw - inset, bibTop);
+    ctx.lineTo(tx + tw - inset * 0.4, shoulderY + th);
+    ctx.lineTo(tx + inset * 0.4, shoulderY + th);
+    ctx.closePath();
+    ctx.fillStyle = overallColor;
+    ctx.fill();
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    ctx.stroke();
+    // straps over the shoulders
+    ctx.strokeStyle = overallColor;
+    ctx.lineWidth = 3.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(tx + inset + 1, bibTop); ctx.lineTo(tx + tw * 0.3, shoulderY - 3);
+    ctx.moveTo(tx + tw - inset - 1, bibTop); ctx.lineTo(tx + tw * 0.7, shoulderY - 3);
+    ctx.stroke();
+    // buttons where the straps meet the bib
     ctx.fillStyle = '#FCD116';
-    ctx.fillRect(tx, shoulderY + th * 0.42, tw, 5);
-    // rounded highlight + shadow for a touch of volume instead of flat color
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.beginPath(); ctx.ellipse(tx + tw * 0.3, shoulderY + th * 0.28, tw * 0.28, th * 0.22, -0.2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,0.14)';
+    ctx.beginPath(); ctx.arc(tx + inset + 1, bibTop, 1.7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(tx + tw - inset - 1, bibTop, 1.7, 0, Math.PI * 2); ctx.fill();
+    // rounded highlight for a touch of volume instead of flat color
+    ctx.fillStyle = 'rgba(255,255,255,0.16)';
+    ctx.beginPath(); ctx.ellipse(tx + tw * 0.32, shoulderY + th * 0.6, tw * 0.16, th * 0.22, -0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
     ctx.fillRect(tx + tw - 4, shoulderY, 4, th);
 
     // arms (front arm swipes with the cutlass when active)
@@ -333,31 +377,49 @@ class Player {
       this._drawArm(ctx, cx + 2, shoulderY, legPhase, facing);
     }
 
-    // head
-    const headCy = sy + 12 + squat + lean * 0.15;
+    // head -- bigger and rounder, with a nose bump, mustache, and a capped
+    // brim, closer to a classic platformer-hero read while staying flag-gold/
+    // green/red instead of the reference's red-and-blue
+    const headR = 12.5;
+    const headCy = sy + 13 + squat + lean * 0.15;
     const headCx = cx + lean * 0.6;
     ctx.fillStyle = '#c99a6a';
-    ctx.beginPath(); ctx.arc(headCx, headCy, 10.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(headCx, headCy, headR, 0, Math.PI * 2); ctx.fill();
+    // ear (back of head)
+    ctx.beginPath(); ctx.arc(headCx - facing * 11, headCy + 3, 2.4, 0, Math.PI * 2); ctx.fill();
+    // nose bump (front of face)
+    ctx.beginPath(); ctx.arc(headCx + facing * 10.5, headCy + 4, 3.6, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.arc(headCx + facing * 10.5, headCy + 4, 3.6, 0, Math.PI * 2); ctx.stroke();
     ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(0,0,0,0.28)';
-    ctx.beginPath(); ctx.arc(headCx, headCy, 10.5, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = '#c99a6a';
-    ctx.beginPath(); ctx.arc(headCx - facing * 9.5, headCy + 2, 2.1, 0, Math.PI * 2); ctx.fill();
-    // hair
+    ctx.beginPath(); ctx.arc(headCx, headCy, headR, 0, Math.PI * 2); ctx.stroke();
+    // mustache
     ctx.fillStyle = '#2a1c10';
-    ctx.beginPath(); ctx.arc(headCx, headCy - 1, 10.5, Math.PI, Math.PI * 2); ctx.fill();
-    // cap
+    ctx.beginPath();
+    ctx.ellipse(headCx + facing * 5.5, headCy + 8, 6.4, 2.6, facing * 0.12, 0, Math.PI * 2);
+    ctx.fill();
+    // hair (back/top, behind the cap)
+    ctx.fillStyle = '#2a1c10';
+    ctx.beginPath(); ctx.arc(headCx, headCy - 1, headR, Math.PI, Math.PI * 2); ctx.fill();
+    // cap dome + band
     ctx.fillStyle = '#CE1126';
-    ctx.beginPath(); ctx.arc(headCx, headCy - 2, 8.6, Math.PI * 0.92, Math.PI * 2.08); ctx.fill();
-    ctx.fillRect(headCx - 8.6, headCy - 4, 17.2, 4);
+    ctx.beginPath(); ctx.arc(headCx, headCy - 2, headR - 1.6, Math.PI * 0.92, Math.PI * 2.08); ctx.fill();
+    ctx.fillRect(headCx - (headR - 1.6), headCy - 4, (headR - 1.6) * 2, 4.5);
     ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(0,0,0,0.28)';
-    ctx.beginPath(); ctx.arc(headCx, headCy - 2, 8.6, Math.PI * 0.92, Math.PI * 2.08); ctx.stroke();
+    ctx.beginPath(); ctx.arc(headCx, headCy - 2, headR - 1.6, Math.PI * 0.92, Math.PI * 2.08); ctx.stroke();
+    // cap brim, pointing the way the player is facing
+    ctx.fillStyle = '#CE1126';
+    ctx.beginPath(); ctx.ellipse(headCx + facing * 8, headCy + 1.5, 7.5, 2.8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.ellipse(headCx + facing * 8, headCy + 1.5, 7.5, 2.8, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.22)';
     ctx.beginPath(); ctx.ellipse(headCx - 3, headCy - 5, 3, 2, -0.3, 0, Math.PI * 2); ctx.fill();
+    // gold emblem on the cap (nods to the flag's golden arrowhead)
     ctx.fillStyle = '#FCD116';
-    ctx.beginPath(); ctx.arc(headCx, headCy - 6, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(headCx, headCy - 7, 2.1, 0, Math.PI * 2); ctx.fill();
     // eyes
     ctx.fillStyle = '#111';
-    ctx.beginPath(); ctx.arc(headCx + facing * 4, headCy, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(headCx + facing * 5, headCy - 1, 1.6, 0, Math.PI * 2); ctx.fill();
 
     // cutlass sheathed at the hip when carried but not mid-swipe
     if (this.hasCutlass && this.swipeTimer <= 0) {

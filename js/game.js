@@ -873,6 +873,50 @@ function repeatWorld(camera, spacing, levelWidth, fn) {
   }
 }
 
+// Stylized Stabroek Market clock tower -- the real landmark is a Victorian
+// cast-iron structure with a white/cream shaft, a red octagonal roof, and
+// four clock faces. sx is already camera-relative.
+function drawClockTower(ctx, sx, groundY) {
+  if (sx < -70 || sx > 1030) return;
+  const towerH = 175;
+  const baseY = groundY - 34;
+  const topY = baseY - towerH;
+  ctx.save();
+  // shaft, gently shaded for depth
+  const shaftGrad = ctx.createLinearGradient(sx - 17, 0, sx + 17, 0);
+  shaftGrad.addColorStop(0, '#e9e2cf');
+  shaftGrad.addColorStop(0.5, '#f7f2e4');
+  shaftGrad.addColorStop(1, '#d9d0b8');
+  ctx.fillStyle = shaftGrad;
+  ctx.fillRect(sx - 17, topY, 34, towerH);
+  ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1;
+  ctx.strokeRect(sx - 17, topY, 34, towerH);
+  // decorative trim bands
+  ctx.fillStyle = 'rgba(0,0,0,0.1)';
+  ctx.fillRect(sx - 17, topY + towerH * 0.42, 34, 3);
+  ctx.fillRect(sx - 17, topY + towerH * 0.8, 34, 3);
+  // clock face
+  ctx.fillStyle = '#fffdf5';
+  ctx.beginPath(); ctx.arc(sx, topY + 28, 16, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(sx, topY + 28, 16, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(sx, topY + 28); ctx.lineTo(sx, topY + 18); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx, topY + 28); ctx.lineTo(sx + 10, topY + 28); ctx.stroke();
+  // red octagonal-ish roof
+  ctx.fillStyle = '#CE1126';
+  ctx.beginPath();
+  ctx.moveTo(sx - 22, topY); ctx.lineTo(sx - 14, topY - 14); ctx.lineTo(sx + 14, topY - 14);
+  ctx.lineTo(sx + 22, topY); ctx.lineTo(sx, topY - 40); ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; ctx.stroke();
+  // gold finial
+  ctx.fillStyle = '#FCD116';
+  ctx.beginPath(); ctx.arc(sx, topY - 42, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(sx - 1, topY - 40, 2, 6);
+  ctx.restore();
+}
+
 function drawThemeDecor(ctx, level, camera, t) {
   const p = level.palette;
   ctx.save();
@@ -890,15 +934,25 @@ function drawThemeDecor(ctx, level, camera, t) {
         ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
         ctx.stroke();
       });
+      // kite-flying kids: the string is anchored to a small silhouette on
+      // the ground so it reads as "a kid flying a kite", not a stray line
       repeatWorld(camera, 400, level.width, (sx, wx) => {
         const ky = 120 + Math.sin(t + wx) * 15;
-        ctx.strokeStyle = 'rgba(120,120,120,0.7)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(sx, ky); ctx.lineTo(sx - 30, level.groundY - 40); ctx.stroke();
-        ctx.fillStyle = '#FCD116';
+        const anchorX = sx - 30, anchorY = level.groundY - 40;
+        ctx.strokeStyle = 'rgba(90,90,90,0.65)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(sx, ky); ctx.lineTo(anchorX, anchorY); ctx.stroke();
+        ctx.fillStyle = wx % 800 === 0 ? '#CE1126' : '#FCD116';
         ctx.beginPath(); ctx.moveTo(sx, ky - 12); ctx.lineTo(sx + 10, ky); ctx.lineTo(sx, ky + 12); ctx.lineTo(sx - 10, ky); ctx.fill();
         ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
         ctx.stroke();
+        // the kid holding the string
+        ctx.fillStyle = 'rgba(50,38,26,0.75)';
+        ctx.beginPath(); ctx.arc(anchorX, anchorY - 12, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(anchorX - 3, anchorY - 8, 6, 11);
       });
+      // Stabroek Market clock tower -- a real Georgetown landmark, placed
+      // once as a backdrop the player passes on their way through the level
+      drawClockTower(ctx, 1500 - camera.x, level.groundY);
       break;
     case 'river':
       repeatWorld(camera, 500, level.width, (sx) => {
