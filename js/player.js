@@ -65,6 +65,7 @@ class Player {
   }
 
   update(dt, input, platforms, t) {
+    if (this.state === 'victory') return; // frozen during the boss-defeat celebration pose
     this.invincible = Math.max(0, this.invincible - dt);
     this.swipeTimer = Math.max(0, this.swipeTimer - dt);
     this.swipeCooldown = Math.max(0, this.swipeCooldown - dt);
@@ -207,8 +208,14 @@ class Player {
     ctx.beginPath(); ctx.ellipse(footX + facing * 3, footY + 1, 6, 3.6, 0, 0, Math.PI * 2); ctx.stroke();
   }
 
-  _drawArm(ctx, shX, shY, phase, facing) {
-    const upper = 9, lower = 10;
+  // isBack: the far-side arm is drawn shorter, thinner, and with a smaller
+  // muted (skin-tone, not bright glove-white) hand. Only ever one bright
+  // white hand is on screen at a time this way -- with both arms full-size
+  // and both white-gloved, the two hands could swing close enough together
+  // (especially near the hip, opposite the shoulder) to read as more than
+  // a two-armed silhouette.
+  _drawArm(ctx, shX, shY, phase, facing, isBack) {
+    const upper = isBack ? 6.5 : 8, lower = isBack ? 7 : 8.5;
     let shAngle, elbowBend;
     if (this.state === 'run') {
       shAngle = facing * Math.sin(phase) * 0.9;
@@ -231,7 +238,7 @@ class Player {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-    ctx.lineWidth = 6.2;
+    ctx.lineWidth = isBack ? 5.2 : 6.2;
     ctx.beginPath();
     ctx.moveTo(shX, shY); ctx.lineTo(elbowX, elbowY); ctx.lineTo(handX, handY);
     ctx.stroke();
@@ -239,15 +246,21 @@ class Player {
     // elbow doesn't get its own rounded end-cap (that was reading as a
     // second, smaller "hand" at the elbow, doubling up per arm)
     ctx.strokeStyle = '#FCD116';
-    ctx.lineWidth = 4.6;
+    ctx.lineWidth = isBack ? 3.6 : 4.6;
     ctx.beginPath();
     ctx.moveTo(shX, shY); ctx.lineTo(elbowX, elbowY); ctx.lineTo(handX, handY);
     ctx.stroke();
-    // white glove -- just the hand itself
-    ctx.fillStyle = '#f5f5f0';
-    ctx.beginPath(); ctx.arc(handX, handY, 3.1, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.beginPath(); ctx.arc(handX, handY, 3.1, 0, Math.PI * 2); ctx.stroke();
+    if (isBack) {
+      ctx.fillStyle = '#c99a6a';
+      ctx.beginPath(); ctx.arc(handX, handY, 2.3, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath(); ctx.arc(handX, handY, 2.3, 0, Math.PI * 2); ctx.stroke();
+    } else {
+      ctx.fillStyle = '#f5f5f0';
+      ctx.beginPath(); ctx.arc(handX, handY, 3.1, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath(); ctx.arc(handX, handY, 3.1, 0, Math.PI * 2); ctx.stroke();
+    }
   }
 
   _drawSwipeArm(ctx, shX, shY, facing) {
@@ -270,6 +283,129 @@ class Player {
     ctx.stroke();
   }
 
+  // Post-boss celebration: fist raised with the thumb up, drawn separately
+  // from _drawArm since it's a held pose rather than a swinging limb. Swung
+  // out to the side (not straight up) so the head -- drawn afterward, on
+  // top -- doesn't paint over and hide the fist.
+  _drawThumbsUp(ctx, shX, shY, lift) {
+    const elbowX = shX + 6, elbowY = shY - 2;
+    const handX = shX + 11, handY = shY - 9 - lift;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 6.2;
+    ctx.beginPath(); ctx.moveTo(shX, shY); ctx.lineTo(elbowX, elbowY); ctx.lineTo(handX, handY); ctx.stroke();
+    ctx.strokeStyle = '#FCD116';
+    ctx.lineWidth = 4.6;
+    ctx.beginPath(); ctx.moveTo(shX, shY); ctx.lineTo(elbowX, elbowY); ctx.lineTo(handX, handY); ctx.stroke();
+    ctx.fillStyle = '#f5f5f0';
+    ctx.beginPath(); ctx.arc(handX, handY, 3.4, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.arc(handX, handY, 3.4, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#f5f5f0'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(handX, handY - 1); ctx.lineTo(handX, handY - 6); ctx.stroke();
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.moveTo(handX, handY - 1); ctx.lineTo(handX, handY - 6); ctx.stroke();
+  }
+
+  // Boss-defeat celebration pose: turns to face the camera (front-on head
+  // instead of the usual profile), winks, and gives a thumbs up.
+  _drawVictoryPose(ctx, sx, sy, cx, t) {
+    const bob = Math.sin(t * 3) * 1.4;
+    const hipY = sy + this.h - 15;
+    const shoulderY = sy + 21 + bob * 0.4;
+
+    if (this.onGround) drawGroundShadow(ctx, cx, sy + this.h + 1, this.w * 0.5);
+
+    this._drawLeg(ctx, cx - 4, hipY, 0, 0, 1);
+    this._drawLeg(ctx, cx + 4, hipY, Math.PI, 1, 1);
+
+    const overallColor = '#009E49', shirtColor = '#FCD116';
+    const tw = this.w - 4, th = this.h - 31;
+    const tx = cx - tw / 2;
+    ctx.beginPath();
+    ctx.moveTo(tx, shoulderY + 1);
+    ctx.quadraticCurveTo(tx - 2, shoulderY + th / 2, tx + 1, shoulderY + th);
+    ctx.lineTo(tx + tw - 1, shoulderY + th);
+    ctx.quadraticCurveTo(tx + tw + 2, shoulderY + th / 2, tx + tw, shoulderY + 1);
+    ctx.closePath();
+    ctx.fillStyle = shirtColor;
+    ctx.fill();
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.stroke();
+
+    const inset = tw * 0.14;
+    const bibTop = shoulderY + th * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(tx + inset, bibTop);
+    ctx.lineTo(tx + tw - inset, bibTop);
+    ctx.lineTo(tx + tw - inset * 0.4, shoulderY + th);
+    ctx.lineTo(tx + inset * 0.4, shoulderY + th);
+    ctx.closePath();
+    ctx.fillStyle = overallColor;
+    ctx.fill();
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    ctx.stroke();
+    ctx.strokeStyle = overallColor;
+    ctx.lineWidth = 3.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(tx + inset + 1, bibTop); ctx.lineTo(tx + tw * 0.3, shoulderY - 3);
+    ctx.moveTo(tx + tw - inset - 1, bibTop); ctx.lineTo(tx + tw * 0.7, shoulderY - 3);
+    ctx.stroke();
+    ctx.fillStyle = '#FCD116';
+    ctx.beginPath(); ctx.arc(tx + inset + 1, bibTop, 1.7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(tx + tw - inset - 1, bibTop, 1.7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.16)';
+    ctx.beginPath(); ctx.ellipse(tx + tw * 0.32, shoulderY + th * 0.6, tw * 0.16, th * 0.22, -0.2, 0, Math.PI * 2); ctx.fill();
+
+    // relaxed arm at the player's side, thumbs-up arm raised on the other
+    this._drawArm(ctx, cx - 4, shoulderY, 0, 1, true);
+    this._drawThumbsUp(ctx, cx + 5, shoulderY, bob);
+
+    // front-facing head -- both eyes visible (one winking) instead of the
+    // usual side profile, so it clearly reads as "looking out of the screen"
+    const headR = 12.5;
+    const headCy = sy + 13 + bob * 0.3;
+    const headCx = cx;
+    ctx.fillStyle = '#c99a6a';
+    ctx.beginPath(); ctx.arc(headCx, headCy, headR, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath(); ctx.arc(headCx, headCy, headR, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#2a1c10';
+    ctx.beginPath(); ctx.arc(headCx, headCy - 1, headR, Math.PI, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#CE1126';
+    ctx.beginPath(); ctx.arc(headCx, headCy - 2, headR - 1.6, Math.PI * 0.92, Math.PI * 2.08); ctx.fill();
+    ctx.fillRect(headCx - (headR - 1.6), headCy - 4, (headR - 1.6) * 2, 4.5);
+    ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath(); ctx.arc(headCx, headCy - 2, headR - 1.6, Math.PI * 0.92, Math.PI * 2.08); ctx.stroke();
+    ctx.fillStyle = '#CE1126';
+    ctx.beginPath(); ctx.ellipse(headCx, headCy + 1.5, 7.5, 2.8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.ellipse(headCx, headCy + 1.5, 7.5, 2.8, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.beginPath(); ctx.ellipse(headCx - 3, headCy - 5, 3, 2, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FCD116';
+    ctx.beginPath(); ctx.arc(headCx, headCy - 7, 2.1, 0, Math.PI * 2); ctx.fill();
+
+    // left eye open with a sparkle, right eye winking shut
+    const eyeY = headCy + 3;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(headCx - 4.5, eyeY, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(headCx - 4, eyeY, 1.2, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(headCx + 4.5, eyeY, 2.1, Math.PI * 0.1, Math.PI * 0.9); ctx.stroke();
+
+    // big grin + a rosy cheek on the winking side
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(headCx, headCy + 4, 4.2, Math.PI * 0.12, Math.PI * 0.88); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,120,120,0.35)';
+    ctx.beginPath(); ctx.ellipse(headCx + 7, headCy + 5, 2, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
   draw(ctx, camera, t) {
     const sx = Math.round(this.x - camera.x);
     const sy = Math.round(this.y - camera.y);
@@ -277,6 +413,13 @@ class Player {
     if (this.invincible > 0 && Math.floor(t * 16) % 2 === 0) ctx.globalAlpha = 0.35;
 
     const cx = sx + this.w / 2;
+
+    if (this.state === 'victory') {
+      this._drawVictoryPose(ctx, sx, sy, cx, t);
+      ctx.restore();
+      return;
+    }
+
     const facing = this.facing;
     const speedRatio = Math.max(0, Math.min(1, Math.abs(this.vx) / MAX_RUN_SPEED));
 
@@ -383,11 +526,11 @@ class Player {
     // made the two hands cluster together and read as more than two.
     const backShX = cx - facing * 2, frontShX = cx + facing * 4;
     if (this.swipeTimer > 0) {
-      this._drawArm(ctx, backShX, shoulderY, legPhase + Math.PI, facing);
+      this._drawArm(ctx, backShX, shoulderY, legPhase + Math.PI, facing, true);
       this._drawSwipeArm(ctx, frontShX, shoulderY, facing);
     } else {
-      this._drawArm(ctx, backShX, shoulderY, legPhase + Math.PI, facing);
-      this._drawArm(ctx, frontShX, shoulderY, legPhase, facing);
+      this._drawArm(ctx, backShX, shoulderY, legPhase + Math.PI, facing, true);
+      this._drawArm(ctx, frontShX, shoulderY, legPhase, facing, false);
     }
 
     // head -- bigger and rounder, with a nose bump and a backwards-turned
@@ -425,19 +568,27 @@ class Player {
     // gold emblem on the cap (nods to the flag's golden arrowhead)
     ctx.fillStyle = '#FCD116';
     ctx.beginPath(); ctx.arc(headCx, headCy - 7, 2.1, 0, Math.PI * 2); ctx.fill();
-    // eyes
+    // eyes -- the cap dome's fill only clears down to about headCy+0.7 (it's
+    // a circle clipped flat along that line), so an eye any higher than that
+    // was landing inside the dome's own red fill and disappearing into the
+    // hat instead of reading on the face. Placed clearly below that line now,
+    // with a white sclera behind the pupil so it pops against the skin tone.
+    const eyeY = headCy + 3;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(headCx + facing * 5, eyeY, 2, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#111';
-    ctx.beginPath(); ctx.arc(headCx + facing * 5, headCy - 1, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(headCx + facing * 5.6, eyeY, 1.2, 0, Math.PI * 2); ctx.fill();
 
-    // cutlass sheathed at the hip when carried but not mid-swipe
+    // cutlass sheathed at the hip when carried but not mid-swipe -- hangs
+    // down alongside the back leg (previously the blade tip pointed all the
+    // way up near head height, which read as floating beside the face)
     if (this.hasCutlass && this.swipeTimer <= 0) {
-      ctx.strokeStyle = '#cfcfcf'; ctx.lineWidth = 2.6;
-      ctx.beginPath();
-      ctx.moveTo(cx + facing * 8, hipY - 6);
-      ctx.lineTo(cx + facing * 15, hipY - 20);
-      ctx.stroke();
+      const hiltX = cx - facing * 9, hiltY = hipY - 2;
+      const tipX = cx - facing * 4, tipY = hipY + 14;
+      ctx.strokeStyle = '#cfcfcf'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(hiltX, hiltY); ctx.lineTo(tipX, tipY); ctx.stroke();
       ctx.strokeStyle = '#7a4a23'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(cx + facing * 8, hipY - 6); ctx.lineTo(cx + facing * 5, hipY - 1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(hiltX, hiltY); ctx.lineTo(hiltX - facing * 3, hiltY - 5); ctx.stroke();
     }
 
     ctx.restore();

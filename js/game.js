@@ -462,13 +462,13 @@ function updateBoss(dt) {
   Game.projectiles.forEach((p) => p.update(dt));
   Game.projectiles = Game.projectiles.filter((p) => !p.dead && p.life > 0);
 
-  player.update(dt, getInput(), def.arenaPlatforms, Game.t);
-  player.x = clamp(player.x, 10, ARENA_W - player.w - 10);
-  if (player.onGround && !Game.prevOnGround) spawnDust(player.x + player.w / 2, player.y + player.h);
-  Game.prevOnGround = player.onGround;
-  fireArrowIfRequested(player, (p) => Game.projectiles.push(p));
-
   if (!boss.defeated) {
+    player.update(dt, getInput(), def.arenaPlatforms, Game.t);
+    player.x = clamp(player.x, 10, ARENA_W - player.w - 10);
+    if (player.onGround && !Game.prevOnGround) spawnDust(player.x + player.w / 2, player.y + player.h);
+    Game.prevOnGround = player.onGround;
+    fireArrowIfRequested(player, (p) => Game.projectiles.push(p));
+
     for (const r of def.getDangerRects(boss)) {
       if (aabbOverlap(player, r)) { hurtPlayerFromContact(); break; }
     }
@@ -476,40 +476,31 @@ function updateBoss(dt) {
       if (p.owner === 'player') continue;
       if (aabbOverlap(player, p)) { hurtPlayerFromContact(); p.dead = true; }
     }
+    // Bosses only go down to a stomp -- the cutlass/bow are for regular
+    // enemies, not boss fights.
     const targets = def.getVulnerableTargets(boss);
     for (const target of targets) {
-      if (player.swipeTimer > 0 && aabbOverlap(player.swipeRect, target)) {
-        def.onTargetHit(boss, target.id);
-        spawnBurst(target.x + target.w / 2, target.y + target.h / 2, '#FCD116', 10);
-        break;
-      } else if (player.vy > 0 && aabbOverlap(player, target) && (player.y + player.h - target.y) < 26) {
+      if (player.vy > 0 && aabbOverlap(player, target) && (player.y + player.h - target.y) < 26) {
         def.onTargetHit(boss, target.id);
         player.vy = -420;
         spawnBurst(target.x + target.w / 2, target.y + target.h / 2, '#FCD116', 10);
         break;
       }
     }
-    for (const p of Game.projectiles) {
-      if (p.owner !== 'player' || p.dead) continue;
-      for (const target of targets) {
-        if (aabbOverlap(p, target)) {
-          def.onTargetHit(boss, target.id);
-          spawnBurst(target.x + target.w / 2, target.y + target.h / 2, '#FCD116', 10);
-          p.dead = true;
-          break;
-        }
-      }
-    }
     for (const hz of (def.arenaHazards || [])) {
       if (aabbOverlap(player, hz)) { killPlayerInstant(); break; }
     }
     if (player.y > ARENA_GROUND_Y + 300) killPlayerInstant();
-  }
-
-  if (boss.defeated) {
+  } else {
     if (!Game.celebrationStarted) {
       Game.celebrationStarted = true;
       startBossCelebration();
+      // snap the player onto the ground and hold the victory pose for the
+      // celebration -- normal player.update() no longer runs once defeated
+      player.x = clamp(player.x, 10, ARENA_W - player.w - 10);
+      player.y = ARENA_GROUND_Y - player.h;
+      player.vx = 0; player.vy = 0; player.onGround = true;
+      player.state = 'victory';
     }
     Game.bossDefeatTimer += dt;
     updateFireworks(dt);
