@@ -382,6 +382,11 @@ function updatePlaying(dt) {
   Game.projectiles = Game.projectiles.filter((p) => !p.dead && p.life > 0);
 
   player.update(dt, getInput(), level.platforms, Game.t);
+  // don't let the player walk back past the left edge of the level -- there's
+  // nothing solid stopping them there otherwise, and the camera itself is
+  // already clamped to x=0, so a player who kept going just walks off the
+  // left edge of the screen instead of being visibly blocked.
+  if (player.x < 0) { player.x = 0; player.vx = Math.max(0, player.vx); }
   if (player.onGround && !Game.prevOnGround) spawnDust(player.x + player.w / 2, player.y + player.h);
   Game.prevOnGround = player.onGround;
   fireArrowIfRequested(player, (p) => Game.projectiles.push(p));
