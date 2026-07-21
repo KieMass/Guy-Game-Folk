@@ -482,10 +482,14 @@ function updateBoss(dt) {
       if (aabbOverlap(player, p)) { hurtPlayerFromContact(); p.dead = true; }
     }
     // Bosses only go down to a stomp -- the cutlass/bow are for regular
-    // enemies, not boss fights.
+    // enemies, not boss fights. Requires real downward speed (not just
+    // player.vy > 0) so simply walking or gently hopping onto a vulnerable
+    // spot that doubles as a platform -- Massacooraman's stuck arm is
+    // literally the platform's landing surface -- doesn't register as a hit
+    // and launch the player away every time they try to stand there.
     const targets = def.getVulnerableTargets(boss);
     for (const target of targets) {
-      if (player.vy > 0 && aabbOverlap(player, target) && (player.y + player.h - target.y) < 26) {
+      if (player.vy > 140 && aabbOverlap(player, target) && (player.y + player.h - target.y) < 26) {
         def.onTargetHit(boss, target.id);
         player.vy = -420;
         spawnBurst(target.x + target.w / 2, target.y + target.h / 2, '#FCD116', 10);

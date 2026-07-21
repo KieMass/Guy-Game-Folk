@@ -126,14 +126,17 @@ const MassacooramanBoss = {
     new Platform({ x: 425, y: 380, w: 110, h: 22, type: 'solid', color: '#8a6a3a', topColor: '#7a5230' }),
     new Platform({ x: 640, y: 380, w: 110, h: 22, type: 'solid', color: '#8a6a3a', topColor: '#7a5230' }),
   ],
-  arenaHazards: [new Hazard({ x: 200, y: 460, w: 560, h: 140, kind: 'water', color: '#0e5aa6' })],
+  // matches the land platforms' top surface (ARENA_GROUND_Y + 40) instead of
+  // sitting 40px higher than the banks either side of it, which read as the
+  // water floating above the land
+  arenaHazards: [new Hazard({ x: 200, y: ARENA_GROUND_Y + 40, w: 560, h: 100, kind: 'water', color: '#0e5aa6' })],
   platformXs: [210, 425, 640],
   platformY: 380,
 
   init() {
     return {
       x: 480, y: 460, w: 90, h: 40,
-      phase: 'idle', timer: 1.6, targetIdx: 1,
+      phase: 'idle', timer: 1.6, targetIdx: Math.floor(Math.random() * 3),
       hitsTaken: 0, hitsRequired: 3, defeated: false,
       armX: 480, armY: 460, waveOn: false,
     };
@@ -150,7 +153,7 @@ const MassacooramanBoss = {
         do { idx = Math.floor(Math.random() * 3); } while (idx === b.targetIdx);
         b.targetIdx = idx;
         b.phase = 'telegraph'; b.timer = 0.75;
-        b.armX = xs[idx];
+        b.armX = xs[idx] + 55; // platform width / 2, so the fist centers on it
       }
     } else if (b.phase === 'telegraph') {
       b.timer -= dt;
@@ -192,6 +195,24 @@ const MassacooramanBoss = {
 
   draw(ctx, b, camera, t) {
     ctx.save();
+    // sloped sandy banks where each platform's edge meets the water, so the
+    // shoreline reads as a gentle ramp down into the water instead of an
+    // abrupt cliff-like edge
+    const bankTop = ARENA_GROUND_Y + 40 - camera.y;
+    ctx.fillStyle = '#c9a15a';
+    ctx.beginPath();
+    ctx.moveTo(160 - camera.x, bankTop);
+    ctx.lineTo(200 - camera.x, bankTop);
+    ctx.lineTo(200 - camera.x, bankTop + 26);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(760 - camera.x, bankTop);
+    ctx.lineTo(800 - camera.x, bankTop);
+    ctx.lineTo(760 - camera.x, bankTop + 26);
+    ctx.closePath();
+    ctx.fill();
+
     // body hump in the water
     const bx = 480 - camera.x, by = ARENA_GROUND_Y + 60;
     ctx.fillStyle = '#3a5a3a';
@@ -209,6 +230,17 @@ const MassacooramanBoss = {
       ctx.beginPath();
       for (let i = -1; i <= 1; i++) { ctx.moveTo(sx + i * 14 - 6, sy); ctx.lineTo(sx + i * 14, sy - 22); ctx.lineTo(sx + i * 14 + 6, sy); }
       ctx.fill();
+      // the arm's shaft is much taller than the platform and would otherwise
+      // completely paint over it while slammed/stuck there, making the
+      // platform look like it's gone rather than just occupied -- redraw its
+      // surface on top so it stays visibly (and actually) landable
+      if (b.phase === 'slam' || b.phase === 'stuck' || b.phase === 'retract') {
+        const px = this.platformXs[b.targetIdx] - camera.x, ppy = this.platformY - camera.y;
+        ctx.fillStyle = '#7a5230';
+        ctx.fillRect(px, ppy, 110, 22);
+        ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1.4;
+        ctx.strokeRect(px, ppy, 110, 22);
+      }
       if (b.phase === 'telegraph') {
         ctx.strokeStyle = 'rgba(255,60,60,0.8)'; ctx.lineWidth = 3;
         ctx.strokeRect(this.platformXs[b.targetIdx] - camera.x - 15, this.platformY - camera.y - 5, 140, 30);
