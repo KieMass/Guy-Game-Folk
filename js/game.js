@@ -243,14 +243,15 @@ function loadStage(pos) {
   else if (stage.type === 'victory') showVictory();
 }
 // A power-up survives into the next level/boss as long as the player still
-// has it when the stage ends -- only losing it (its timer runs out, or the
-// player dies and loses their remaining lives) resets it. Simply finishing
-// a stage does not, so we snapshot it off the outgoing player and reapply
-// it to the fresh one loadStage() creates.
+// has it when the stage ends. The cutlass/bow have no timer at all now --
+// they're only lost by dying (see triggerDeath) -- while star power/speed
+// boost still expire on their own countdown. Simply finishing a stage never
+// takes any of them away, so we snapshot the outgoing player and reapply it
+// to the fresh one loadStage() creates.
 function carryOverPowerUps(from, to) {
   if (!from || !to) return;
-  if (from.hasCutlass) { to.hasCutlass = true; to.cutlassTimer = from.cutlassTimer; }
-  if (from.hasBow) { to.hasBow = true; to.bowTimer = from.bowTimer; }
+  if (from.hasCutlass) to.hasCutlass = true;
+  if (from.hasBow) to.hasBow = true;
   if (from.starPowerTimer > 0) to.starPowerTimer = from.starPowerTimer;
   if (from.speedBoostTimer > 0) to.speedBoostTimer = from.speedBoostTimer;
 }
@@ -743,6 +744,8 @@ function killPlayerInstant() {
 // got hit" beat, and only resolves to a respawn or game-over once it's safe.
 function triggerDeath(particleColor) {
   Game.lives--;
+  Game.player.hasCutlass = false;
+  Game.player.hasBow = false;
   spawnBurst(Game.player.x + Game.player.w / 2, Game.player.y + Game.player.h / 2, particleColor, 12);
   Game.player.dead = true;
   Game.player.vx = 0;
@@ -883,8 +886,8 @@ function updateHUD() {
   const puEl = document.getElementById('hud-powerups');
   if (Game.player) {
     const pu = [];
-    if (Game.player.hasCutlass) pu.push(`🗡${Math.ceil(Game.player.cutlassTimer)}s`);
-    if (Game.player.hasBow) pu.push(`🏹${Math.ceil(Game.player.bowTimer)}s`);
+    if (Game.player.hasCutlass) pu.push('🗡');
+    if (Game.player.hasBow) pu.push('🏹');
     if (Game.player.starPowerTimer > 0) pu.push(`⭐${Math.ceil(Game.player.starPowerTimer)}s`);
     if (Game.player.speedBoostTimer > 0) pu.push(`⚡${Math.ceil(Game.player.speedBoostTimer)}s`);
     if (pu.length) {

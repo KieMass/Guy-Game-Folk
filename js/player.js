@@ -23,9 +23,7 @@ class Player {
     this.jumping = false;
     this.invincible = 0;
     this.hasCutlass = false;
-    this.cutlassTimer = 0;
     this.hasBow = false;
-    this.bowTimer = 0;
     this.shootCooldown = 0;
     this.arrowRequested = false;
     this.starPowerTimer = 0;
@@ -52,9 +50,11 @@ class Player {
   }
 
   // Cutlass and bow are alternate weapons -- only one is equipped at a time,
-  // so picking one up replaces the other.
-  grantCutlass() { this.hasCutlass = true; this.cutlassTimer = 14; this.hasBow = false; this.bowTimer = 0; }
-  grantBow() { this.hasBow = true; this.bowTimer = 14; this.hasCutlass = false; this.cutlassTimer = 0; }
+  // so picking one up replaces the other. Neither expires on a timer; the
+  // player keeps whichever weapon they're holding until they lose a life
+  // (see triggerDeath in game.js).
+  grantCutlass() { this.hasCutlass = true; this.hasBow = false; }
+  grantBow() { this.hasBow = true; this.hasCutlass = false; }
   grantStarPower() { this.starPowerTimer = 8; }
   grantSpeedBoost() { this.speedBoostTimer = 8; }
 
@@ -70,14 +70,6 @@ class Player {
     this.swipeCooldown = Math.max(0, this.swipeCooldown - dt);
     this.starPowerTimer = Math.max(0, this.starPowerTimer - dt);
     this.speedBoostTimer = Math.max(0, this.speedBoostTimer - dt);
-    if (this.hasCutlass) {
-      this.cutlassTimer -= dt;
-      if (this.cutlassTimer <= 0) this.hasCutlass = false;
-    }
-    if (this.hasBow) {
-      this.bowTimer -= dt;
-      if (this.bowTimer <= 0) this.hasBow = false;
-    }
 
     // horizontal movement: only moves while a direction is actively held
     const maxSpeed = this.speedBoostTimer > 0 ? MAX_RUN_SPEED * 1.4 : MAX_RUN_SPEED;
@@ -219,7 +211,7 @@ class Player {
     const upper = 9, lower = 10;
     let shAngle, elbowBend;
     if (this.state === 'run') {
-      shAngle = Math.sin(phase) * 0.9;
+      shAngle = facing * Math.sin(phase) * 0.9;
       elbowBend = 0.35 + Math.max(0, Math.sin(phase)) * 0.55;
     } else if (this.state === 'jump') {
       shAngle = -facing * 0.5;
@@ -228,7 +220,7 @@ class Player {
       shAngle = facing * 0.15;
       elbowBend = 0.55;
     } else {
-      shAngle = Math.sin(this.animTimer * 2.4) * 0.09;
+      shAngle = facing * Math.sin(this.animTimer * 2.4) * 0.09;
       elbowBend = 0.25;
     }
     const elbowX = shX + Math.sin(shAngle) * upper;
@@ -383,12 +375,19 @@ class Player {
     ctx.fillRect(tx + tw - 4, shoulderY, 4, th);
 
     // arms (front arm swipes with the cutlass when active)
+    // Shoulder x-offsets follow facing, same as the head/nose below, so the
+    // "front" arm sits toward the direction of travel and the "back" arm
+    // tucks in behind it instead of both hanging off two points 4px apart
+    // near dead center -- that fixed, facing-independent placement (plus the
+    // run-cycle swing not accounting for facing either, fixed above) is what
+    // made the two hands cluster together and read as more than two.
+    const backShX = cx - facing * 2, frontShX = cx + facing * 4;
     if (this.swipeTimer > 0) {
-      this._drawArm(ctx, cx - 2, shoulderY, legPhase + Math.PI, facing);
-      this._drawSwipeArm(ctx, cx + 2, shoulderY, facing);
+      this._drawArm(ctx, backShX, shoulderY, legPhase + Math.PI, facing);
+      this._drawSwipeArm(ctx, frontShX, shoulderY, facing);
     } else {
-      this._drawArm(ctx, cx - 2, shoulderY, legPhase + Math.PI, facing);
-      this._drawArm(ctx, cx + 2, shoulderY, legPhase, facing);
+      this._drawArm(ctx, backShX, shoulderY, legPhase + Math.PI, facing);
+      this._drawArm(ctx, frontShX, shoulderY, legPhase, facing);
     }
 
     // head -- bigger and rounder, with a nose bump and a backwards-turned
