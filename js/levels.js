@@ -40,12 +40,22 @@ function scatter(type, x0, x1, step, y) {
   for (let x = x0; x <= x1; x += step) arr.push(mkC(type, x, y));
   return arr;
 }
+// A locked gate: a solid Platform (blocks the player like any other solid
+// ground) that only opens once the mini-game puzzle at its position is
+// solved -- see js/minigames.js for the puzzle overlay and js/game.js's
+// updatePlaying() for the walk-into-it trigger. Tall enough (200px) that it
+// can't be jumped over from flat ground.
+function mkGate(x, groundY, puzzleType, w) {
+  const gw = w || 90;
+  return new Platform({ x, y: groundY - 200, w: gw, h: 200, type: 'gate', puzzleType, color: '#5a3a1f', topColor: '#FCD116' });
+}
 
 // ================= LEVEL 1 : Stabroek Market & Sea Wall =================
 function buildLevel1() {
   const w = 3000;
   const g = groundWithGaps(0, w, GROUND_Y, [[820, 905], [1900, 1975]], '#c9a15a', '#3fa34d', 'water', '#1c6fbf');
-  const platforms = [...g.platforms,
+  const gate1 = mkGate(1600, GROUND_Y, 'trivia');
+  const platforms = [...g.platforms, gate1,
     plat(650, 370, 130, 20, '#c9a15a', '#CE1126'),
     plat(1000, 355, 110, 20, '#c9a15a', '#FCD116'),
     plat(1250, 380, 100, 20, '#c9a15a', '#009E49'),
@@ -78,7 +88,7 @@ function buildLevel1() {
     theme: 'market', night: false,
     palette: { sky1: '#8fd3f4', sky2: '#eaf9ff', ground: '#c9a15a', groundTop: '#3fa34d', accent: '#CE1126', accent2: '#FCD116' },
     playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 1500, endX: 2900,
-    platforms, hazards: g.hazards, enemies, collectibles,
+    platforms, hazards: g.hazards, enemies, collectibles, gates: [gate1],
   };
 }
 
@@ -86,7 +96,8 @@ function buildLevel1() {
 function buildLevel2() {
   const w = 3400;
   const g = groundWithGaps(0, w, GROUND_Y, [[500, 1250], [1650, 2250], [2600, 3150]], '#8a6a3a', '#7a5230', 'water', '#0e5aa6');
-  const platforms = [...g.platforms,
+  const gate1 = mkGate(2500, GROUND_Y, 'sequence');
+  const platforms = [...g.platforms, gate1,
     movingPlat(560, GROUND_Y - 10, 110, 22, 'x', 90, 0.7, 0, '#7a5230', '#FCD116'),
     movingPlat(900, GROUND_Y - 10, 110, 22, 'x', 90, 0.7, Math.PI, '#7a5230', '#FCD116'),
     movingPlat(1700, GROUND_Y - 30, 100, 22, 'x', 110, 0.9, 0, '#7a5230', '#CE1126'),
@@ -121,7 +132,7 @@ function buildLevel2() {
     theme: 'river', night: false,
     palette: { sky1: '#a7ddf0', sky2: '#eefaff', ground: '#8a6a3a', groundTop: '#7a5230', accent: '#009E49', accent2: '#FCD116' },
     playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 1550, endX: 3300,
-    platforms, hazards: g.hazards, enemies, collectibles,
+    platforms, hazards: g.hazards, enemies, collectibles, gates: [gate1],
   };
 }
 
@@ -129,7 +140,8 @@ function buildLevel2() {
 function buildLevel3() {
   const w = 3600;
   const g = groundWithGaps(0, w, GROUND_Y, [[400, 700], [1100, 1350], [1800, 2000], [2500, 2820]], '#5b7a4a', '#3fa34d', 'water', '#12689e');
-  const platforms = [...g.platforms,
+  const gate1 = mkGate(1600, GROUND_Y, 'trivia');
+  const platforms = [...g.platforms, gate1,
     plat(430, GROUND_Y - 40, 90, 18, '#4a6b3a', '#3fa34d'),
     crumblePlat(590, GROUND_Y - 20, 90, 18, '#6b4a2a', '#8a6a3a'),
     plat(1130, GROUND_Y - 60, 90, 18, '#4a6b3a', '#3fa34d'),
@@ -165,7 +177,7 @@ function buildLevel3() {
     theme: 'mangrove', night: false,
     palette: { sky1: '#bfe6c9', sky2: '#eefef2', ground: '#5b7a4a', groundTop: '#3fa34d', accent: '#009E49', accent2: '#CE1126' },
     playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 1750, endX: 3500,
-    platforms, hazards: g.hazards, enemies, collectibles,
+    platforms, hazards: g.hazards, enemies, collectibles, gates: [gate1],
   };
 }
 
@@ -174,7 +186,8 @@ function buildLevel4() {
   const w = 3900;
   // start & end ledges are solid; the whole middle is a big fall hazard (forest floor far below)
   const g = groundWithGaps(0, w, GROUND_Y, [[300, 3600]], '#2e5d2e', '#1f3f1f', 'pit', '#14210f');
-  const platforms = [...g.platforms,
+  const gate1 = mkGate(200, GROUND_Y, 'sliding');
+  const platforms = [...g.platforms, gate1,
     plat(360, 400, 110, 20, '#3a6b2a', '#4d8a34'),
     movingPlat(560, 380, 90, 20, 'x', 70, 0.8, 0, '#3a6b2a', '#4d8a34'),
     plat(760, 340, 100, 20, '#3a6b2a', '#4d8a34'),
@@ -212,7 +225,7 @@ function buildLevel4() {
     theme: 'canopy', night: false,
     palette: { sky1: '#2f6b3a', sky2: '#5fae5f', ground: '#2e5d2e', groundTop: '#1f3f1f', accent: '#FCD116', accent2: '#CE1126' },
     playerStart: { x: 80, y: 350 }, checkpointX: 1900, endX: 3700,
-    platforms, hazards: g.hazards, enemies, collectibles,
+    platforms, hazards: g.hazards, enemies, collectibles, gates: [gate1],
   };
 }
 
@@ -220,7 +233,8 @@ function buildLevel4() {
 function buildLevel5() {
   const w = 3800;
   const g = groundWithGaps(0, w, GROUND_Y, [[280, 3550]], '#7a7a7a', '#5a5a5a', 'water', '#2e86c1');
-  const platforms = [...g.platforms,
+  const gate1 = mkGate(150, GROUND_Y, 'trivia');
+  const platforms = [...g.platforms, gate1,
     plat(320, 420, 120, 20, '#8a8a8a', '#c9c9c9'),
     crumblePlat(520, 380, 100, 20, '#8a8a8a', '#c9c9c9'),
     plat(720, 420, 110, 20, '#8a8a8a', '#c9c9c9'),
@@ -257,7 +271,7 @@ function buildLevel5() {
     theme: 'falls', night: false,
     palette: { sky1: '#9fd0e6', sky2: '#eafcff', ground: '#7a7a7a', groundTop: '#5a5a5a', accent: '#009E49', accent2: '#FCD116' },
     playerStart: { x: 80, y: 380 }, checkpointX: 1600, endX: 3600,
-    platforms, hazards: g.hazards, enemies, collectibles,
+    platforms, hazards: g.hazards, enemies, collectibles, gates: [gate1],
   };
 }
 
@@ -265,7 +279,8 @@ function buildLevel5() {
 function buildLevel6() {
   const w = 4000;
   const g = groundWithGaps(0, w, GROUND_Y, [[900, 1050], [2100, 2260], [3000, 3140]], '#a68a52', '#c9ab6a', 'pit', '#141414');
-  const platforms = [...g.platforms,
+  const gate1 = mkGate(1100, GROUND_Y, 'word');
+  const platforms = [...g.platforms, gate1,
     plat(760, 380, 90, 18, '#a68a52', '#c9ab6a'),
     plat(2000, 360, 90, 18, '#a68a52', '#c9ab6a'),
     movingPlat(2900, 380, 90, 18, 'x', 60, 0.9, 0, '#a68a52', '#c9ab6a'),
@@ -295,7 +310,7 @@ function buildLevel6() {
     theme: 'savannah', night: true,
     palette: { sky1: '#0c1533', sky2: '#2a3a63', ground: '#a68a52', groundTop: '#c9ab6a', accent: '#FCD116', accent2: '#009E49' },
     playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 2000, endX: 3850,
-    platforms, hazards: g.hazards, enemies, collectibles,
+    platforms, hazards: g.hazards, enemies, collectibles, gates: [gate1],
   };
 }
 
@@ -304,7 +319,8 @@ function buildLevel7() {
   const w = 4200;
   const g = groundWithGaps(0, w, GROUND_Y, [[600, 780], [1300, 1520], [2100, 2340], [2900, 3050], [3500, 3700]],
     '#6b4a2a', '#8a6a3a', 'pit', '#241a10');
-  const platforms = [...g.platforms,
+  const gate1 = mkGate(1600, GROUND_Y, 'trivia');
+  const platforms = [...g.platforms, gate1,
     vanishPlat(620, GROUND_Y - 20, 80, 18, 1.8, 1.2, 0, '#6b4a2a', '#8a6a3a'),
     vanishPlat(700, GROUND_Y - 20, 80, 18, 1.8, 1.2, 0.9, '#6b4a2a', '#8a6a3a'),
     movingPlat(1330, GROUND_Y - 40, 90, 18, 'x', 90, 1.0, 0, '#6b4a2a', '#FCD116'),
@@ -340,7 +356,7 @@ function buildLevel7() {
     theme: 'mining', night: false,
     palette: { sky1: '#d8c48a', sky2: '#f3e9c8', ground: '#6b4a2a', groundTop: '#8a6a3a', accent: '#FCD116', accent2: '#CE1126' },
     playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 2050, endX: 4050,
-    platforms, hazards: g.hazards, enemies, collectibles,
+    platforms, hazards: g.hazards, enemies, collectibles, gates: [gate1],
   };
 }
 
@@ -349,7 +365,8 @@ function buildLevel8() {
   const w = 4200;
   const g = groundWithGaps(0, w, GROUND_Y, [[1000, 1180], [1900, 2080], [2800, 3000], [3500, 3680]],
     '#3a5a2e', '#4d7a3a', 'pit', '#14210f');
-  const platforms = [...g.platforms,
+  const gate1 = mkGate(1200, GROUND_Y, 'trivia');
+  const platforms = [...g.platforms, gate1,
     // ascending disappearing-platform puzzle towers
     vanishPlat(700, 380, 90, 18, 1.6, 1.1, 0, '#4a6b3a', '#6b8a4a'),
     vanishPlat(700, 280, 90, 18, 1.6, 1.1, 0.6, '#4a6b3a', '#6b8a4a'),
@@ -388,7 +405,7 @@ function buildLevel8() {
     theme: 'camp', night: false,
     palette: { sky1: '#4a7a4a', sky2: '#9fce8a', ground: '#3a5a2e', groundTop: '#4d7a3a', accent: '#FCD116', accent2: '#CE1126' },
     playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 1850, endX: 4050,
-    platforms, hazards: g.hazards, enemies, collectibles,
+    platforms, hazards: g.hazards, enemies, collectibles, gates: [gate1],
   };
 }
 
@@ -405,7 +422,8 @@ function buildLevel9() {
     new Hazard({ x: 2600, y: GROUND_Y - 16, w: 220, h: 50, kind: 'tide', color: '#2e93c9', tideRange: 150, tideSpeed: 0.55 }),
     new Hazard({ x: 3500, y: GROUND_Y - 16, w: 220, h: 50, kind: 'tide', color: '#2e93c9', tideRange: 170, tideSpeed: 0.45 }),
   ];
-  const platforms = [...g.platforms,
+  const gate1 = mkGate(1100, GROUND_Y, 'trivia');
+  const platforms = [...g.platforms, gate1,
     plat(900, 380, 100, 18, '#e8d29a', '#f5e6bb'),
     plat(1200, 360, 100, 18, '#e8d29a', '#f5e6bb'),
     crumblePlat(1900, 380, 90, 18, '#e8d29a', '#f5e6bb'),
@@ -436,7 +454,7 @@ function buildLevel9() {
     theme: 'beach', night: false,
     palette: { sky1: '#bfe9f0', sky2: '#fff7e0', ground: '#e8d29a', groundTop: '#f5e6bb', accent: '#009E49', accent2: '#CE1126' },
     playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 2200, endX: 4250,
-    platforms, hazards, enemies, collectibles,
+    platforms, hazards, enemies, collectibles, gates: [gate1],
   };
 }
 
@@ -445,7 +463,8 @@ function buildLevel10() {
   const w = 5200;
   const g = groundWithGaps(0, w, GROUND_Y, [[500, 660], [1200, 1420], [2000, 2150], [2700, 2960], [3600, 3760], [4300, 4520]],
     '#5a6b4a', '#3fa34d', 'pit', '#12210f');
-  const platforms = [...g.platforms,
+  const gate1 = mkGate(2200, GROUND_Y, 'trivia');
+  const platforms = [...g.platforms, gate1,
     vanishPlat(520, GROUND_Y - 20, 80, 18, 1.6, 1.0, 0, '#5a6b4a', '#3fa34d'),
     vanishPlat(580, GROUND_Y - 20, 80, 18, 1.6, 1.0, 0.8, '#5a6b4a', '#3fa34d'),
     movingPlat(1230, GROUND_Y - 60, 90, 18, 'x', 90, 1.0, 0, '#5a6b4a', '#FCD116'),
@@ -492,7 +511,7 @@ function buildLevel10() {
     theme: 'mountains', night: false,
     palette: { sky1: '#7fb8d8', sky2: '#e3f3fb', ground: '#5a6b4a', groundTop: '#3fa34d', accent: '#CE1126', accent2: '#FCD116' },
     playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 2400, endX: 5050,
-    platforms, hazards: g.hazards, enemies, collectibles,
+    platforms, hazards: g.hazards, enemies, collectibles, gates: [gate1],
   };
 }
 

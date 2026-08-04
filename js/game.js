@@ -165,6 +165,13 @@ function handleKeyAction(code) {
     case 'boss':
       if (code === 'Escape' || code === 'KeyP') togglePause();
       break;
+    case 'puzzle':
+      // digit keys 1-4 pick a trivia answer; sequence/sliding/word puzzles
+      // are click/tap-only (see js/minigames.js).
+      if (['Digit1', 'Digit2', 'Digit3', 'Digit4'].includes(code)) {
+        handlePuzzleDigitKey(Number(code.slice(-1)) - 1);
+      }
+      break;
     case 'paused':
       if (code === 'Escape' || code === 'KeyP') togglePause();
       break;
@@ -183,12 +190,12 @@ function setState(newState) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
   const map = {
     title: 'screen-title', instructions: 'screen-instructions', levelintro: 'screen-intro', bossintro: 'screen-boss-intro',
-    paused: 'screen-pause', gameover: 'screen-gameover', victory: 'screen-victory',
+    paused: 'screen-pause', gameover: 'screen-gameover', victory: 'screen-victory', puzzle: 'screen-puzzle',
   };
   if (map[newState]) document.getElementById(map[newState]).classList.remove('hidden');
 
   const hud = document.getElementById('hud');
-  if (['playing', 'paused', 'boss', 'levelintro', 'bossintro'].includes(newState)) hud.classList.remove('hidden');
+  if (['playing', 'paused', 'boss', 'levelintro', 'bossintro', 'puzzle'].includes(newState)) hud.classList.remove('hidden');
   else hud.classList.add('hidden');
 
   const bossWrap = document.getElementById('boss-health-wrap');
@@ -439,6 +446,17 @@ function updatePlaying(dt) {
   for (const p of Game.projectiles) {
     if (p.owner === 'player') continue;
     if (aabbOverlap(player, p)) { hurtPlayerFromContact(); p.dead = true; }
+  }
+
+  // locked gates -- the gate is a solid Platform, so the player is already
+  // physically stopped flush against it by the time this fires; the small
+  // margin just catches "touching" without needing an exact pixel match.
+  for (const gate of level.gates) {
+    if (gate.open) continue;
+    if (aabbOverlap(player, { x: gate.x - 4, y: gate.y, w: gate.w + 8, h: gate.h })) {
+      startGatePuzzle(gate);
+      return;
+    }
   }
 
   // checkpoint
@@ -910,7 +928,7 @@ function render() {
     drawBackground(ctx, LEVELS[0], { x: Game.t * 12, y: 0 }, Game.t);
     return;
   }
-  if (['levelintro', 'playing', 'paused'].includes(Game.state) && Game.currentLevel) {
+  if (['levelintro', 'playing', 'paused', 'puzzle'].includes(Game.state) && Game.currentLevel) {
     renderLevel();
     return;
   }

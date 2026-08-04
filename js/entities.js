@@ -48,8 +48,11 @@ function drawGroundShadow(ctx, cx, groundScreenY, halfWidth) {
   ctx.restore();
 }
 
+// How long a solved gate takes to visually fade/shrink away once opened.
+const GATE_OPEN_FADE = 0.4;
+
 // ---------- Platform ----------
-// type: 'solid' | 'moving' | 'crumble' | 'disappear'
+// type: 'solid' | 'moving' | 'crumble' | 'disappear' | 'gate'
 class Platform {
   constructor(o) {
     this.x = o.x;
@@ -76,6 +79,13 @@ class Platform {
     this.disappearTimer = o.phase || 0;
     this.visible = true;
 
+    // gate state -- solid, locked barrier that blocks the level until a
+    // mini-game puzzle (see js/minigames.js) is solved. `puzzleType`
+    // selects which puzzle renders when the player walks into it.
+    this.puzzleType = o.puzzleType || null;
+    this.open = false;
+    this.openTimer = 0;  // seconds since solved, drives the fade-out below
+
     this.dx = 0;
     this.dy = 0;
   }
@@ -83,6 +93,7 @@ class Platform {
   isSolid() {
     if (this.type === 'crumble') return this.crumbleState !== 'gone';
     if (this.type === 'disappear') return this.visible;
+    if (this.type === 'gate') return !this.open;
     return true;
   }
 
@@ -118,6 +129,11 @@ class Platform {
       const cycle = this.onTime + this.offTime;
       const phase = this.disappearTimer % cycle;
       this.visible = phase < this.onTime;
+    } else if (this.type === 'gate' && this.open) {
+      // isSolid() already returns false the instant `open` flips (so the
+      // player can walk through immediately) -- this timer only drives the
+      // visual fade-out in draw(), purely cosmetic.
+      if (this.openTimer < GATE_OPEN_FADE) this.openTimer += dt;
     }
 
     this.dx = this.x - prevX;
@@ -127,6 +143,7 @@ class Platform {
   draw(ctx, camera) {
     if (this.type === 'disappear' && !this.visible) return;
     if (this.type === 'crumble' && this.crumbleState === 'gone') return;
+    if (this.type === 'gate' && this.open && this.openTimer >= GATE_OPEN_FADE) return;
 
     const sx = this.x - camera.x;
     const sy = this.y - camera.y;
@@ -141,6 +158,8 @@ class Platform {
       const cycle = this.onTime + this.offTime;
       const phase = this.disappearTimer % cycle;
       if (phase > this.onTime - 0.5) alpha = Math.max(0.35, (this.onTime - phase) / 0.5);
+    } else if (this.type === 'gate' && this.open) {
+      alpha = Math.max(0, 1 - this.openTimer / GATE_OPEN_FADE);
     }
 
     ctx.save();
@@ -164,12 +183,40 @@ class Platform {
     topGrad.addColorStop(1, this.topColor);
     ctx.fillStyle = topGrad;
     ctx.fillRect(drawX, sy, this.w, bandH);
+    // gate: a couple of darker vertical plank seams so it reads as a door,
+    // not just another platform
+    if (this.type === 'gate') {
+      ctx.fillStyle = shadeColor(this.color, -22);
+      ctx.fillRect(drawX + this.w * 0.32, sy, 3, this.h);
+      ctx.fillRect(drawX + this.w * 0.65, sy, 3, this.h);
+    }
     ctx.restore();
 
     ctx.lineWidth = 1.4;
     ctx.strokeStyle = 'rgba(0,0,0,0.22)';
     roundRectPath(ctx, drawX, sy, this.w, this.h, r);
     ctx.stroke();
+
+    // padlock glyph while still locked -- hand-drawn to match this file's
+    // no-image-assets convention (see roundRectPath/shadeColor above).
+    if (this.type === 'gate' && !this.open) {
+      const cx = drawX + this.w / 2, cy = sy + this.h * 0.4;
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#2a1a0a';
+      ctx.beginPath();
+      ctx.arc(cx, cy - 6, 7, Math.PI, 0, false);
+      ctx.stroke();
+      roundRectPath(ctx, cx - 9, cy - 2, 18, 15, 3);
+      ctx.fillStyle = '#FCD116';
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = '#2a1a0a';
+      ctx.beginPath();
+      ctx.arc(cx, cy + 3, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(cx - 1, cy + 3, 2, 5);
+    }
     ctx.restore();
   }
 }
