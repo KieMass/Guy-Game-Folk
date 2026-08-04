@@ -305,8 +305,10 @@ function buildLevel7() {
   const g = groundWithGaps(0, w, GROUND_Y, [[600, 780], [1300, 1520], [2100, 2340], [2900, 3050], [3500, 3700]],
     '#6b4a2a', '#8a6a3a', 'pit', '#241a10');
   const platforms = [...g.platforms,
+    // Phase offset kept within [offTime, onTime] = [1.2, 1.8] so the pair is
+    // never simultaneously invisible.
     vanishPlat(620, GROUND_Y - 20, 80, 18, 1.8, 1.2, 0, '#6b4a2a', '#8a6a3a'),
-    vanishPlat(700, GROUND_Y - 20, 80, 18, 1.8, 1.2, 0.9, '#6b4a2a', '#8a6a3a'),
+    vanishPlat(700, GROUND_Y - 20, 80, 18, 1.8, 1.2, 1.5, '#6b4a2a', '#8a6a3a'),
     movingPlat(1330, GROUND_Y - 40, 90, 18, 'x', 90, 1.0, 0, '#6b4a2a', '#FCD116'),
     vanishPlat(1600, GROUND_Y - 60, 100, 18, 2.0, 1.0, 0, '#6b4a2a', '#8a6a3a'),
     movingPlat(2120, GROUND_Y - 30, 90, 18, 'x', 100, 0.9, 0, '#6b4a2a', '#FCD116'),
@@ -446,8 +448,10 @@ function buildLevel10() {
   const g = groundWithGaps(0, w, GROUND_Y, [[500, 660], [1200, 1420], [2000, 2150], [2700, 2960], [3600, 3760], [4300, 4520]],
     '#5a6b4a', '#3fa34d', 'pit', '#12210f');
   const platforms = [...g.platforms,
+    // Phase offset kept within [offTime, onTime] (here [1.0, 1.6]) so the pair
+    // never goes fully invisible at the same time - there's always a landing spot.
     vanishPlat(520, GROUND_Y - 20, 80, 18, 1.6, 1.0, 0, '#5a6b4a', '#3fa34d'),
-    vanishPlat(580, GROUND_Y - 20, 80, 18, 1.6, 1.0, 0.8, '#5a6b4a', '#3fa34d'),
+    vanishPlat(580, GROUND_Y - 20, 80, 18, 1.6, 1.0, 1.3, '#5a6b4a', '#3fa34d'),
     movingPlat(1230, GROUND_Y - 60, 90, 18, 'x', 90, 1.0, 0, '#5a6b4a', '#FCD116'),
     plat(1480, GROUND_Y - 90, 100, 18, '#5a6b4a', '#3fa34d'),
     crumblePlat(1700, GROUND_Y - 40, 90, 18, '#5a6b4a', '#3fa34d'),
@@ -460,8 +464,11 @@ function buildLevel10() {
     vanishPlat(3620, GROUND_Y - 60, 90, 18, 1.4, 1.0, 0.4, '#5a6b4a', '#3fa34d'),
     movingPlat(3950, GROUND_Y - 40, 100, 18, 'x', 100, 0.9, 0, '#5a6b4a', '#FCD116'),
     plat(4200, GROUND_Y - 90, 100, 18, '#5a6b4a', '#3fa34d'),
+    // This pair spans the widest pit in the level (220px, beyond a full-speed
+    // jump); phase kept within [offTime, onTime] = [1.0, 1.3] so one of the two
+    // is always solid - crossing just requires timing the hop, not a blind leap.
     vanishPlat(4340, GROUND_Y - 30, 80, 18, 1.3, 1.0, 0, '#5a6b4a', '#3fa34d'),
-    vanishPlat(4430, GROUND_Y - 30, 80, 18, 1.3, 1.0, 0.6, '#5a6b4a', '#3fa34d'),
+    vanishPlat(4430, GROUND_Y - 30, 80, 18, 1.3, 1.0, 1.15, '#5a6b4a', '#3fa34d'),
   ];
   const enemies = [
     mkEnemy('crawler', 300, GROUND_Y - 28, { range: 80, speed: 55, color: '#8a5a2b' }),

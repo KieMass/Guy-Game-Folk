@@ -7,10 +7,15 @@
 
 const GRAVITY = 1800;
 const MAX_FALL_SPEED = 900;
-const JUMP_VELOCITY = -700;
+// Jump velocity + run speed together cap how wide a gap a full-speed running
+// jump can clear (~202px before this tuning). Several level gaps (notably the
+// last pit on level 10, and a couple on levels 7/8) sit at 200-220px, which
+// left almost no margin for reaction time / imperfect run-ups. Bumped both
+// slightly so the max jump distance (~230px) gives real clearance.
+const JUMP_VELOCITY = -740;
 const JUMP_CUT_MULT = 0.45;
 const COYOTE_TIME = 0.1;
-const MAX_RUN_SPEED = 260;
+const MAX_RUN_SPEED = 280;
 
 class Player {
   constructor(x, y) {
