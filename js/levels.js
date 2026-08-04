@@ -453,7 +453,13 @@ function buildLevel9() {
     id: 9, name: 'Shell Beach', location: 'Shell Beach', width: w, groundY: GROUND_Y,
     theme: 'beach', night: false,
     palette: { sky1: '#bfe9f0', sky2: '#fff7e0', ground: '#e8d29a', groundTop: '#f5e6bb', accent: '#009E49', accent2: '#CE1126' },
-    playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 2200, endX: 4250,
+    // Checkpoint moved up from 2200 to right after the first tide crossing
+    // (tide zone 1 is x700-920, max tide-surge reach x1060) and well before
+    // the second (x1600-1820, max reach x1980) -- previously a death
+    // anywhere before the old checkpoint sent the player all the way back
+    // to the start, forcing a re-crossing of *both* tide zones on every
+    // retry. Now only the first crossing is a one-time thing.
+    playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 1250, endX: 4250,
     platforms, hazards, enemies, collectibles, gates: [gate1],
   };
 }
