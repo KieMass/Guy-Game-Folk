@@ -395,6 +395,21 @@ html, body {
   75% { transform: translateX(6px); }
 }
 
+/* Deliberately smaller/quieter than .big-button and .answer-btn -- this
+   costs a life, so it shouldn't compete visually with "keep trying". */
+.skip-button {
+  font-family: inherit;
+  font-size: 12px;
+  color: #ffb3b3;
+  background: transparent;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+.skip-button:hover { opacity: 1; }
+
 /* ================= Touch controls (mobile / Android shell) ================= */
 #touch-controls {
   position: absolute;

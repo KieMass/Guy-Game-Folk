@@ -87,6 +87,8 @@ function init() {
   if (btnAgain) btnAgain.addEventListener('click', backToTitle);
   const btnResume = document.getElementById('btn-resume');
   if (btnResume) btnResume.addEventListener('click', togglePause);
+  const btnSkipPuzzle = document.getElementById('btn-skip-puzzle');
+  if (btnSkipPuzzle) btnSkipPuzzle.addEventListener('click', skipPuzzleForLife);
 
   // level/boss intro cards have no button -- any tap on the card dismisses them,
   // mirroring the "press any key" keyboard behavior for touch-only devices
@@ -867,7 +869,7 @@ function bossHealthFraction(def, boss) {
 }
 
 function updateHUD() {
-  if (!['playing', 'paused', 'boss', 'levelintro', 'bossintro'].includes(Game.state)) return;
+  if (!['playing', 'paused', 'boss', 'levelintro', 'bossintro', 'puzzle'].includes(Game.state)) return;
   document.getElementById('hud-lives').textContent = '❤'.repeat(Math.max(0, Game.lives)) + '♡'.repeat(Math.max(0, 3 - Game.lives));
   document.getElementById('hud-score').textContent = `Score: ${Game.score}`;
   const lvlNameEl = document.getElementById('hud-level');

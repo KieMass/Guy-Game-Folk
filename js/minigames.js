@@ -18,73 +18,63 @@
 */
 
 // ---------------- question / word pools ----------------
+// Guyana trivia, pitched for a ~10-12 year old player. Mirrors/extends the
+// facts already established in facts.js (level intro/bonus facts and boss
+// flavor text) so nothing here contradicts what the game teaches elsewhere.
 const TRIVIA_POOL = [
-  // animals
-  { q: 'Which animal is known as the "King of the Jungle"?', choices: ['Lion', 'Tiger', 'Elephant', 'Bear'], answer: 0 },
-  { q: 'How many legs does a spider have?', choices: ['6', '8', '10', '4'], answer: 1 },
-  { q: 'What is a baby kangaroo called?', choices: ['Cub', 'Joey', 'Calf', 'Kit'], answer: 1 },
-  { q: 'Which of these birds cannot fly?', choices: ['Eagle', 'Penguin', 'Sparrow', 'Hawk'], answer: 1 },
-  { q: 'What do you call a group of wolves?', choices: ['Herd', 'Pack', 'Flock', 'School'], answer: 1 },
-  { q: 'Which is the largest mammal on Earth?', choices: ['Elephant', 'Blue Whale', 'Giraffe', 'Hippopotamus'], answer: 1 },
-  { q: 'How many hearts does an octopus have?', choices: ['1', '2', '3', '4'], answer: 2 },
-  { q: 'Which animal is famous for changing color to blend in?', choices: ['Chameleon', 'Frog', 'Lizard', 'Snake'], answer: 0 },
-  { q: 'What is the fastest land animal?', choices: ['Lion', 'Cheetah', 'Horse', 'Ostrich'], answer: 1 },
-  { q: 'Which sea creature has eight arms?', choices: ['Squid', 'Octopus', 'Jellyfish', 'Starfish'], answer: 1 },
-  // geography
-  { q: 'What is the largest continent by area?', choices: ['Africa', 'Asia', 'Europe', 'North America'], answer: 1 },
-  { q: 'Which is the longest river in the world?', choices: ['Amazon', 'Nile', 'Mississippi', 'Yangtze'], answer: 1 },
-  { q: 'What is the largest ocean on Earth?', choices: ['Atlantic', 'Indian', 'Pacific', 'Arctic'], answer: 2 },
-  { q: 'Which country is known as the "Land of the Rising Sun"?', choices: ['China', 'Japan', 'Thailand', 'Korea'], answer: 1 },
-  { q: 'What is the smallest continent?', choices: ['Australia', 'Europe', 'Antarctica', 'South America'], answer: 0 },
-  { q: 'Which desert is the largest hot desert in the world?', choices: ['Gobi', 'Sahara', 'Kalahari', 'Mojave'], answer: 1 },
-  { q: 'What is the capital of France?', choices: ['Berlin', 'Madrid', 'Paris', 'Rome'], answer: 2 },
-  { q: 'Which mountain is the tallest in the world?', choices: ['K2', 'Everest', 'Kilimanjaro', 'Denali'], answer: 1 },
-  { q: 'How many continents are there?', choices: ['5', '6', '7', '8'], answer: 2 },
-  { q: 'Which is the largest country by land area?', choices: ['Canada', 'USA', 'China', 'Russia'], answer: 3 },
-  // science
-  { q: 'What gas do plants absorb from the air to grow?', choices: ['Oxygen', 'Carbon Dioxide', 'Nitrogen', 'Helium'], answer: 1 },
-  { q: 'What is the boiling point of water in Celsius?', choices: ['50', '100', '150', '200'], answer: 1 },
-  { q: 'What planet do we live on?', choices: ['Mars', 'Venus', 'Earth', 'Jupiter'], answer: 2 },
-  { q: 'What force pulls objects down toward the Earth?', choices: ['Magnetism', 'Gravity', 'Friction', 'Electricity'], answer: 1 },
-  { q: 'What is the chemical symbol for water?', choices: ['O2', 'CO2', 'H2O', 'NaCl'], answer: 2 },
-  { q: 'What part of a plant absorbs water from the soil?', choices: ['Leaves', 'Roots', 'Stem', 'Flower'], answer: 1 },
-  { q: 'About how many bones are in the adult human body?', choices: ['106', '206', '306', '406'], answer: 1 },
-  { q: 'What do bees make?', choices: ['Milk', 'Honey', 'Silk', 'Butter'], answer: 1 },
-  { q: 'Which sense organ do you use to see?', choices: ['Ears', 'Nose', 'Eyes', 'Skin'], answer: 2 },
-  { q: 'What is the process by which plants make their own food called?', choices: ['Respiration', 'Photosynthesis', 'Digestion', 'Evaporation'], answer: 1 },
-  // space
-  { q: 'Which planet is known as the Red Planet?', choices: ['Venus', 'Mars', 'Jupiter', 'Saturn'], answer: 1 },
-  { q: 'What is the closest star to Earth?', choices: ['North Star', 'The Sun', 'Sirius', 'Polaris'], answer: 1 },
-  { q: 'What do we call a rocky object smaller than a planet that orbits the sun?', choices: ['Asteroid', 'Comet', 'Moon', 'Star'], answer: 0 },
-  { q: 'How many planets are in our solar system?', choices: ['7', '8', '9', '10'], answer: 1 },
-  { q: 'What is Earth\'s only natural satellite called?', choices: ['Mars', 'The Moon', 'Titan', 'Europa'], answer: 1 },
-  { q: 'Which planet is famous for its rings?', choices: ['Mars', 'Saturn', 'Mercury', 'Earth'], answer: 1 },
-  { q: 'What do we call a group of stars that forms a pattern?', choices: ['Galaxy', 'Constellation', 'Nebula', 'Orbit'], answer: 1 },
-  { q: 'What is the name of the galaxy that contains our solar system?', choices: ['Andromeda', 'Milky Way', 'Whirlpool', 'Sombrero'], answer: 1 },
-  { q: 'Who was the first person to walk on the Moon?', choices: ['Buzz Aldrin', 'Neil Armstrong', 'Yuri Gagarin', 'John Glenn'], answer: 1 },
-  { q: 'What do astronauts wear to breathe in space?', choices: ['A helmet', 'A space suit', 'A mask', 'A backpack'], answer: 1 },
-  // math
-  { q: 'What is 7 x 8?', choices: ['54', '56', '58', '64'], answer: 1 },
-  { q: 'What is half of 100?', choices: ['25', '40', '50', '60'], answer: 2 },
-  { q: 'How many sides does a hexagon have?', choices: ['5', '6', '7', '8'], answer: 1 },
-  { q: 'What is 15 + 27?', choices: ['32', '42', '52', '40'], answer: 1 },
-  { q: 'What shape has exactly three sides?', choices: ['Square', 'Triangle', 'Circle', 'Pentagon'], answer: 1 },
-  { q: 'What is 9 x 9?', choices: ['72', '81', '89', '99'], answer: 1 },
-  { q: 'How many minutes are in an hour?', choices: ['30', '45', '60', '90'], answer: 2 },
-  { q: 'What is 100 divided by 4?', choices: ['20', '25', '30', '40'], answer: 1 },
-  { q: 'How many days are in a leap year?', choices: ['364', '365', '366', '367'], answer: 2 },
-  { q: 'What do you call a number only divisible by 1 and itself?', choices: ['Even number', 'Prime number', 'Odd number', 'Square number'], answer: 1 },
-  // everyday / general
-  { q: 'What do bees collect from flowers to make honey?', choices: ['Pollen', 'Nectar', 'Water', 'Sap'], answer: 1 },
-  { q: 'Which meal do people usually eat in the morning?', choices: ['Lunch', 'Dinner', 'Breakfast', 'Snack'], answer: 2 },
-  { q: 'What is the freezing point of water in Celsius?', choices: ['-10', '0', '10', '32'], answer: 1 },
-  { q: 'How many colors are in a rainbow?', choices: ['5', '6', '7', '8'], answer: 2 },
-  { q: 'What tool do you use to tell the time?', choices: ['Ruler', 'Clock', 'Scale', 'Compass'], answer: 1 },
-  { q: 'Which season comes right after winter?', choices: ['Summer', 'Fall', 'Spring', 'Autumn'], answer: 2 },
-  { q: 'What do you call a story with magic or myths that isn\'t true?', choices: ['Biography', 'Fable', 'Newspaper', 'Textbook'], answer: 1 },
-  { q: 'How many days are in a week?', choices: ['5', '6', '7', '8'], answer: 2 },
-  { q: 'What color do you get by mixing blue and yellow?', choices: ['Purple', 'Orange', 'Green', 'Brown'], answer: 2 },
-  { q: 'What instrument do you use to check your temperature?', choices: ['Thermometer', 'Barometer', 'Compass', 'Telescope'], answer: 0 },
+  // geography & landmarks
+  { q: "What is the capital city of Guyana?", choices: ['Georgetown', 'Bridgetown', 'Paramaribo', 'Bogota'], answer: 0 },
+  { q: 'Which river drains nearly 70% of Guyana and is the longest in the country?', choices: ['Demerara', 'Essequibo', 'Berbice', 'Courantyne'], answer: 1 },
+  { q: "What is the name of Guyana's famous waterfall, one of the tallest single-drop falls in the world?", choices: ['Angel Falls', 'Kaieteur Falls', 'Victoria Falls', 'Iguazu Falls'], answer: 1 },
+  { q: 'About how many times taller is Kaieteur Falls than Niagara Falls?', choices: ['About half as tall', 'About the same height', 'Almost 5 times taller', '20 times taller'], answer: 2 },
+  { q: 'Which river gave its name to a famous type of brown sugar?', choices: ['Essequibo', 'Demerara', 'Berbice', 'Rupununi'], answer: 1 },
+  { q: 'Which mountains split the Rupununi Savannah into a North and South half?', choices: ['Pakaraima Mountains', 'Kanuku Mountains', 'Andes Mountains', 'Blue Mountains'], answer: 1 },
+  { q: 'Which forest is famous for its canopy walkway high above the treetops?', choices: ['Iwokrama Forest', 'Amazon Rainforest', 'Kanuku Forest', 'Mangrove Forest'], answer: 0 },
+  { q: 'What makes Shell Beach so important?', choices: ['Its golden sand dunes', 'Sea turtles nest there', 'Its coral reefs', 'A famous lighthouse'], answer: 1 },
+  { q: 'Which ocean borders Guyana to the north?', choices: ['Pacific Ocean', 'Caribbean Sea', 'Atlantic Ocean', 'Indian Ocean'], answer: 2 },
+  { q: 'Which of these countries does NOT share a border with Guyana?', choices: ['Venezuela', 'Brazil', 'Suriname', 'Colombia'], answer: 3 },
+  { q: 'Guyana is sometimes nicknamed "The Land of Many..." what?', choices: ['Mountains', 'Waters', 'Deserts', 'Islands'], answer: 1 },
+  { q: "Georgetown sits below sea level thanks to a Sea Wall first built by engineers from which country?", choices: ['The Dutch', 'The French', 'The Spanish', 'The Portuguese'], answer: 0 },
+  { q: "What is the name of Georgetown's famous market with the iconic clock tower?", choices: ['Stabroek Market', 'Bourda Market', 'Kitty Market', 'Bel Air Market'], answer: 0 },
+  { q: 'The Kanuku Mountains are considered one of the most... what... places on the planet?', choices: ['Rainy', 'Biodiverse', 'Rocky', 'Cold'], answer: 1 },
+  { q: "What is the Essequibo River dotted with, some big enough to have their own villages?", choices: ['Waterfalls', 'Islands', 'Bridges', 'Lighthouses'], answer: 1 },
+  // culture, history & people
+  { q: 'What is Guyana\'s flag nicknamed?', choices: ['The Golden Arrowhead', 'The Rising Sun', 'The Green Star', 'The Silver Wave'], answer: 0 },
+  { q: 'Which continent is Guyana located on?', choices: ['Africa', 'South America', 'Asia', 'Central America'], answer: 1 },
+  { q: 'What was Guyana called before it became independent in 1966?', choices: ['British Guiana', 'French Guiana', 'Dutch Suriname', 'New Holland'], answer: 0 },
+  { q: 'What is the official language of Guyana?', choices: ['Spanish', 'Portuguese', 'English', 'French'], answer: 2 },
+  { q: "What is Guyana's currency called?", choices: ['Guyanese Dollar', 'Guyanese Pound', 'Guyanese Peso', 'Guyanese Real'], answer: 0 },
+  { q: "What is Guyana's national bird, also known as the Canje Pheasant?", choices: ['Harpy Eagle', 'Hoatzin', 'Toucan', 'Scarlet Macaw'], answer: 1 },
+  { q: "What is Guyana's national flower, a giant water lily?", choices: ['Victoria Regia', 'Rose', 'Orchid', 'Sunflower'], answer: 0 },
+  { q: "About how many different Indigenous peoples call Guyana's interior home?", choices: ['Three', 'Six', 'Nine', 'Twelve'], answer: 2 },
+  { q: "What are Guyana's traditional small-scale gold and diamond miners called?", choices: ['Bushmen', 'Pork-knockers', 'Prospectors', 'Trailblazers'], answer: 1 },
+  { q: "What root vegetable is a staple food in Guyana's interior, often baked into bread?", choices: ['Potato', 'Cassava', 'Carrot', 'Beet'], answer: 1 },
+  { q: 'What do interior travelers sleep in when they set up a bush camp?', choices: ['Tents', 'Hammocks', 'Sleeping bags', 'Cabins'], answer: 1 },
+  { q: "Which big cat appears on Guyana's Coat of Arms?", choices: ['Lion', 'Jaguar', 'Tiger', 'Leopard'], answer: 1 },
+  { q: 'Besides gold and diamonds, what else is Guyana well known for mining?', choices: ['Coal', 'Bauxite', 'Iron only', 'Salt'], answer: 1 },
+  { q: 'What are the cattle ranchers of the Rupununi Savannah traditionally called?', choices: ['Cowboys', 'Vaqueros', 'Gauchos', 'Rustlers'], answer: 1 },
+  // wildlife & nature
+  { q: "What is the world's largest scaled freshwater fish, found in Guyana's rivers?", choices: ['Piranha', 'Arapaima', 'Catfish', 'Electric Eel'], answer: 1 },
+  { q: 'What is the largest rodent in the world, found in Guyana?', choices: ['Capybara', 'Beaver', 'Groundhog', 'Porcupine'], answer: 0 },
+  { q: "Which powerful big cat prowls Guyana's forests and savannahs?", choices: ['Lion', 'Jaguar', 'Tiger', 'Cheetah'], answer: 1 },
+  { q: 'How long can a giant river otter in Guyana grow?', choices: ['Up to 1.8 meters', 'Up to 30 centimeters', 'Up to 5 meters', 'Up to 1 meter'], answer: 0 },
+  { q: 'Which powerful eagle, one of the largest in the world, nests in the Kanuku Mountains?', choices: ['Bald Eagle', 'Harpy Eagle', 'Golden Eagle', 'Sea Eagle'], answer: 1 },
+  { q: 'Which sea turtles nest at Shell Beach and can grow larger than a bathtub?', choices: ['Snapping turtles', 'Leatherback turtles', 'Box turtles', 'Painted turtles'], answer: 1 },
+  { q: 'What lights up Rupununi nights like tiny floating lanterns?', choices: ['Stars', 'Fireflies', 'Lightning', 'Fireworks'], answer: 1 },
+  { q: 'What kind of frog lives in the giant tank bromeliads near Kaieteur Falls?', choices: ['Golden frogs', 'Poison frogs', 'Tree frogs', 'Bullfrogs'], answer: 0 },
+  { q: 'How many eggs can a mother sea turtle lay in a single nest at Shell Beach?', choices: ['About 5', 'Over 80', 'About 20', 'Just 1'], answer: 1 },
+  { q: "What are baby sea turtles called, hatching from nests on Shell Beach?", choices: ['Cubs', 'Hatchlings', 'Joeys', 'Pups'], answer: 1 },
+  // folklore (the game's five bosses)
+  { q: 'In Guyanese folklore, what does Ole Higue shed at night before flying as a ball of fire?', choices: ['Her shadow', 'Her skin', 'Her voice', 'Her shoes'], answer: 1 },
+  { q: 'What can you leave by the door to stop Ole Higue, since she must stop and count every one?', choices: ['Coins', 'Salt or rice', 'Flowers', 'Candles'], answer: 1 },
+  { q: 'What is Massacooraman said to be in Guyanese folklore?', choices: ['A tiny river fairy', 'A huge river giant', 'A talking fish', 'A friendly dolphin'], answer: 1 },
+  { q: 'What does Massacooraman guard, according to legend?', choices: ["Guyana's mountains", "Guyana's waterways", "Guyana's forests", "Guyana's caves"], answer: 1 },
+  { q: 'What are Moongazers said to do at crossroads?', choices: ['Dance all night', 'Stand silently staring at the moon', 'Sing loudly', 'Chase travelers'], answer: 1 },
+  { q: 'How tall are Moongazers said to be in folklore?', choices: ["So short you'd step over them", "So tall you could walk between their legs", 'Exactly human height', 'The size of a house'], answer: 1 },
+  { q: 'Where is a Baccoo traditionally said to be kept?', choices: ['In a tree', 'In a bottle', 'In a cave', 'Under a bed'], answer: 1 },
+  { q: 'What is a Baccoo traditionally fed to keep it happy?', choices: ['Milk and bananas', 'Bread and water', 'Meat and rice', 'Honey and nuts'], answer: 0 },
+  { q: 'What animal does Kanaima take the form of to deliver justice, according to Indigenous legend?', choices: ['A snake', 'A jaguar', 'An eagle', 'A crocodile'], answer: 1 },
+  { q: 'What does Kanaima represent in Indigenous Guyanese tradition?', choices: ['Mischief and tricks', 'Balance and justice', 'Bad luck', 'Good fortune'], answer: 1 },
 ];
 
 const WORD_POOL = [
@@ -127,6 +117,28 @@ function resolvePuzzleSuccess() {
   const returnTo = Game.prevState || 'playing';
   Game.puzzle = null;
   setState(returnTo);
+}
+
+// Escape hatch for a puzzle the player genuinely can't crack: costs a real
+// life (same currency as getting hit by a hazard/enemy), same as the
+// wrong-answer penalty is a real but small score/time cost. Deliberately
+// does NOT call triggerDeath()/respawnPlayer() -- the player isn't "dying",
+// they're paying to skip, so they stay exactly where they are and the gate
+// just opens. If that was their last life, it defers to the same
+// game-over/continue flow a normal death would trigger.
+function skipPuzzleForLife() {
+  if (!Game.puzzle) return;
+  const gate = Game.puzzle.gate;
+  const returnTo = Game.prevState || 'playing';
+  Game.lives--;
+  Game.puzzle = null;
+  if (Game.lives <= 0) {
+    triggerGameOver();
+  } else {
+    gate.open = true;
+    setState(returnTo);
+    showToast('Gate skipped -- lost a life', 2.4);
+  }
 }
 
 // Shared "wrong answer" penalty: a small score/time cost, never a life --
