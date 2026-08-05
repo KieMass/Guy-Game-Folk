@@ -67,7 +67,7 @@ function init() {
   window.addEventListener('keydown', (e) => {
     Game.keys[e.code] = true;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
-    handleKeyAction(e.code);
+    handleKeyAction(e.code, e.shiftKey);
   });
   window.addEventListener('keyup', (e) => { Game.keys[e.code] = false; });
   // Safety net: if focus is lost while a key is physically held (alt-tab,
@@ -149,11 +149,34 @@ function setupTouchControls() {
   if (btnPause) btnPause.addEventListener('click', (e) => { e.preventDefault(); togglePause(); });
 }
 
-function handleKeyAction(code) {
+// ---------------- debug: jump straight to any level/boss for testing ----------------
+// Not part of the shipped game UI, just a keyboard shortcut so levels don't
+// have to be played through from the start to test them. Digits 1-9 = levels
+// 1-9, 0 = level 10; hold Shift + a digit 1-5 for that boss fight instead.
+// Works two ways: from the title screen it starts a brand new run there;
+// from the pause screen it warps the *current* run there (keeping score/
+// lives/etc as they are), so you can hop between levels mid-session.
+function parseDebugLevelKey(code, shift) {
+  const m = code.match(/^Digit(\d)$/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (shift) return n >= 1 && n <= 5 ? { boss: n - 1 } : null;
+  return { level: n === 0 ? 9 : n - 1 };
+}
+function debugStartRunAt(target) {
+  Game.lives = 3; Game.score = 0; Game.unlockedBonusFacts = []; Game.treasureCount = 0;
+  Game.toast = null; Game.continuesLeft = 3;
+  if (target.boss !== undefined) loadBoss(target.boss); else loadLevel(target.level);
+}
+
+function handleKeyAction(code, shiftKey) {
   switch (Game.state) {
-    case 'title':
+    case 'title': {
       if (code === 'Space' || code === 'Enter') setState('instructions');
+      const debugTarget = parseDebugLevelKey(code, shiftKey);
+      if (debugTarget) debugStartRunAt(debugTarget);
       break;
+    }
     case 'instructions':
       if (code === 'Space' || code === 'Enter') startNewRun();
       break;
@@ -174,9 +197,16 @@ function handleKeyAction(code) {
         handlePuzzleDigitKey(Number(code.slice(-1)) - 1);
       }
       break;
-    case 'paused':
+    case 'paused': {
       if (code === 'Escape' || code === 'KeyP') togglePause();
+      // debug warp: jump the *current* run straight to another level/boss
+      // (see parseDebugLevelKey above) instead of resuming where you paused.
+      const debugTarget = parseDebugLevelKey(code, shiftKey);
+      if (debugTarget) {
+        if (debugTarget.boss !== undefined) loadBoss(debugTarget.boss); else loadLevel(debugTarget.level);
+      }
       break;
+    }
     case 'gameover':
       if (code === 'Space' || code === 'Enter') retryGame();
       break;
