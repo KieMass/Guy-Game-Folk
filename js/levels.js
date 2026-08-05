@@ -423,13 +423,21 @@ function buildLevel9() {
     new Hazard({ x: 3500, y: GROUND_Y - 16, w: 220, h: 50, kind: 'tide', color: '#2e93c9', tideRange: 170, tideSpeed: 0.45 }),
   ];
   const gate1 = mkGate(1100, GROUND_Y, 'trivia');
+  // Tide hazards can never be crossed by jumping straight over them (their
+  // surge width alone exceeds the player's max jump distance -- a raised
+  // platform is mandatory), so each one gets a single wide platform sized to
+  // (a) start close enough to the last safe standing spot before the tide
+  // (hazard.x - player.w) for a short, comfortable first jump (~110px, well
+  // under the ~230px max) and (b) run past the hazard's fully-surged-in
+  // right edge (hazard.x + baseW + tideRange) with margin, so stepping off
+  // the far end is always safe regardless of tide phase.
   const platforms = [...g.platforms, gate1,
-    plat(900, 380, 100, 18, '#e8d29a', '#f5e6bb'),
+    plat(780, 380, 300, 18, '#e8d29a', '#f5e6bb'),   // tide 1 (700-920, max reach 1060)
     plat(1200, 360, 100, 18, '#e8d29a', '#f5e6bb'),
-    crumblePlat(1900, 380, 90, 18, '#e8d29a', '#f5e6bb'),
+    plat(1680, 380, 340, 18, '#e8d29a', '#f5e6bb'),  // tide 2 (1600-1820, max reach 1980)
     plat(2150, 360, 100, 18, '#e8d29a', '#f5e6bb'),
-    movingPlat(2900, 370, 100, 18, 'x', 80, 0.8, 0, '#e8d29a', '#f5e6bb'),
-    plat(3800, 360, 110, 18, '#e8d29a', '#f5e6bb'),
+    plat(2680, 370, 330, 18, '#e8d29a', '#f5e6bb'),  // tide 3 (2600-2820, max reach 2970)
+    plat(3580, 360, 350, 18, '#e8d29a', '#f5e6bb'),  // tide 4 (3500-3720, max reach 3890)
   ];
   const enemies = [
     mkEnemy('crawler', 400, GROUND_Y - 26, { range: 80, speed: 50, color: '#2e6b4a' }),
