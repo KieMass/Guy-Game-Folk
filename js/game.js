@@ -461,8 +461,16 @@ function updatePlaying(dt) {
     }
   }
 
-  // checkpoint
-  if (!level.checkpointReached && player.x >= level.checkpointX && player.onGround) {
+  // checkpoint -- only capture while standing on solid ground (a real ground
+  // segment or a hand-placed static plat(), both type 'solid'), never on a
+  // moving/crumbling/disappearing platform or a gate. Without this guard, a
+  // player who first crosses checkpointX mid-jump and lands on one of those
+  // unstable platforms (e.g. a vanish-platform stepping stone over a pit)
+  // gets that precarious spot captured as their checkpoint -- so a later
+  // death can respawn them right back over the hazard, sometimes onto a
+  // platform that's mid-cycle invisible, dropping them straight back in.
+  if (!level.checkpointReached && player.x >= level.checkpointX && player.onGround &&
+      player.standingOn && player.standingOn.type === 'solid') {
     level.checkpointReached = true;
     level.checkpointPos = { x: player.x, y: player.y };
     spawnBurst(player.x + player.w / 2, player.y, '#FCD116', 10);
