@@ -72,6 +72,12 @@ function init() {
   Game.ctx = Game.canvas.getContext('2d');
 
   window.addEventListener('keydown', (e) => {
+    // The victory screen's name-entry field is the one real text input in
+    // the game -- while it's focused, let keystrokes behave like normal
+    // typing (Space/Enter included) instead of being eaten as game
+    // shortcuts (Space would otherwise both fail to type a space *and*
+    // immediately trigger 'victory' state's Space-to-continue).
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
     Game.keys[e.code] = true;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
     handleKeyAction(e.code, e.shiftKey);
@@ -106,6 +112,18 @@ function init() {
   const levelCompleteScreen = document.getElementById('screen-level-complete');
   if (levelCompleteScreen) levelCompleteScreen.addEventListener('click', () => { clearTimeout(Game.introTimeout); dismissLevelComplete(); });
 
+  const victorySaveForm = document.getElementById('victory-save-form');
+  if (victorySaveForm) victorySaveForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = document.getElementById('victory-name-input');
+    const name = (input.value || '').trim();
+    const statusEl = document.getElementById('victory-save-status');
+    if (!name) { statusEl.textContent = 'Enter a name first!'; return; }
+    saveHighScore(name, Game.score);
+    statusEl.textContent = `Saved, ${name.slice(0, 12)}!`;
+    victorySaveForm.classList.add('hidden');
+  });
+
   loadLevelStars();
   setupTouchControls();
   setState('title');
@@ -124,6 +142,52 @@ function loadLevelStars() {
 function saveLevelStars(levelId, stars) {
   Game.levelStars[levelId] = Math.max(Game.levelStars[levelId] || 0, stars);
   try { localStorage.setItem('guyanaQuestLevelStars', JSON.stringify(Game.levelStars)); } catch (e) { /* not persisted this session */ }
+}
+
+// ---------------- high scores (name + score, top 5, saved on completing the game) ----------------
+const HIGH_SCORE_KEY = 'guyanaQuestHighScores';
+const HIGH_SCORE_MAX = 5;
+
+function loadHighScores() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HIGH_SCORE_KEY) || '[]');
+    return Array.isArray(saved) ? saved : [];
+  } catch (e) { return []; }
+}
+
+// Only the top 5 are ever shown, so only the top 5 need to be kept in
+// storage -- re-sorted and re-trimmed on every save.
+function saveHighScore(name, score) {
+  const scores = loadHighScores();
+  scores.push({ name: name.slice(0, 12) || 'Explorer', score });
+  scores.sort((a, b) => b.score - a.score);
+  const top = scores.slice(0, HIGH_SCORE_MAX);
+  try { localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(top)); } catch (e) { /* not persisted this session */ }
+  return top;
+}
+
+function renderHighScores() {
+  const listEl = document.getElementById('high-scores-list');
+  if (!listEl) return;
+  const scores = loadHighScores();
+  listEl.innerHTML = '';
+  if (scores.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'hs-empty';
+    li.textContent = 'No scores yet -- be the first!';
+    listEl.appendChild(li);
+    return;
+  }
+  scores.forEach((s) => {
+    const li = document.createElement('li');
+    const nameEl = document.createElement('span');
+    nameEl.textContent = s.name;
+    const scoreEl = document.createElement('span');
+    scoreEl.textContent = s.score;
+    li.appendChild(nameEl);
+    li.appendChild(scoreEl);
+    listEl.appendChild(li);
+  });
 }
 
 // ---------------- touch controls ----------------
@@ -255,6 +319,7 @@ function setState(newState) {
     levelcomplete: 'screen-level-complete',
   };
   if (map[newState]) document.getElementById(map[newState]).classList.remove('hidden');
+  if (newState === 'title') renderHighScores();
 
   const hud = document.getElementById('hud');
   if (['playing', 'paused', 'boss', 'levelintro', 'bossintro', 'puzzle', 'levelcomplete'].includes(newState)) hud.classList.remove('hidden');
@@ -393,6 +458,12 @@ function showVictory() {
   const n = Game.unlockedBonusFacts.length;
   document.getElementById('victory-facts').textContent =
     `You learned ${n} bonus fact${n === 1 ? '' : 's'} about Guyana on your journey!`;
+  // reset the save-score form fresh for this run
+  const nameInput = document.getElementById('victory-name-input');
+  if (nameInput) nameInput.value = '';
+  document.getElementById('victory-save-status').textContent = '';
+  const form = document.getElementById('victory-save-form');
+  if (form) form.classList.remove('hidden');
 }
 
 // ---------------- main loop ----------------

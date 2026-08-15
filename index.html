@@ -46,6 +46,10 @@
   <!-- ============ Title screen ============ -->
   <div id="screen-title" class="screen">
     <div class="title-flag-stripe"></div>
+    <div id="high-scores-panel" class="high-scores-panel">
+      <h3>Top Explorers</h3>
+      <ol id="high-scores-list"></ol>
+    </div>
     <h1 id="game-title">GUYANA<span>QUEST</span></h1>
     <p class="subtitle">A journey across Guyana, from Stabroek Market to the rivers of Bartica</p>
     <button id="btn-start" class="big-button">Tap or Press SPACE</button>
@@ -120,6 +124,11 @@
     <p class="fact-text">You journeyed from Georgetown all the way to the rivers of Bartica, besting Ole Higue, Massacoraman, Moongazer, Baccoo, Kanaima, and Watermama herself.</p>
     <p id="victory-score" class="fact-text">Final Score: 0</p>
     <p id="victory-facts" class="fact-text"></p>
+    <form id="victory-save-form" class="save-score-form">
+      <input id="victory-name-input" class="name-input" type="text" maxlength="12" placeholder="Enter your name" autocomplete="off">
+      <button type="submit" class="big-button">Save My Score</button>
+    </form>
+    <p id="victory-save-status" class="hint"></p>
     <button id="btn-playagain" class="big-button">Tap for Title Screen</button>
   </div>
 
