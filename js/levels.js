@@ -1,6 +1,6 @@
 /*
   levels.js
-  Plain-data definitions for all 10 levels. Uses small helper builder functions
+  Plain-data definitions for all 11 levels. Uses small helper builder functions
   (groundWithGaps, plat, movingPlat, crumblePlat, vanishPlat, mkEnemy, mkC, scatter)
   so a non-programmer can tweak numbers (positions, ranges, counts) without touching
   the engine code in game.js / player.js / entities.js.
@@ -536,11 +536,67 @@ function buildLevel10() {
   };
 }
 
+// ================= LEVEL 11 : Bartica River Confluence (epilogue) =================
+// The last leg of the journey, back down out of the Kanukus to where the
+// Essequibo, Mazaruni, and Cuyuni rivers meet -- and Watermama's crossing.
+function buildLevel11() {
+  const w = 4600;
+  const g = groundWithGaps(0, w, GROUND_Y, [[520, 900], [1400, 1850], [2350, 2820], [3300, 3720], [4000, 4260]],
+    '#7a5a34', '#8a6a3a', 'water', '#0e6a9e');
+  const gate1 = mkGate(2100, GROUND_Y, 'rhythm');
+  // river-crossing log/canoe platforms -- the water here runs three channels
+  // wide (Essequibo, Mazaruni, Cuyuni all meet at Bartica), so every gap
+  // needs a moving, crumbling, or vanishing "boat" to ride across instead of
+  // a simple jump.
+  const platforms = [...g.platforms, gate1,
+    movingPlat(560, GROUND_Y - 10, 110, 20, 'x', 100, 0.75, 0, '#6b4a2a', '#8a6a3a'),
+    movingPlat(760, GROUND_Y - 10, 110, 20, 'x', 100, 0.75, Math.PI, '#6b4a2a', '#8a6a3a'),
+    crumblePlat(1450, GROUND_Y - 30, 90, 20, '#6b4a2a', '#8a6a3a'),
+    crumblePlat(1620, GROUND_Y - 30, 90, 20, '#6b4a2a', '#8a6a3a'),
+    movingPlat(1800, GROUND_Y - 50, 100, 20, 'y', 50, 0.9, 0, '#6b4a2a', '#FCD116'),
+    movingPlat(2400, GROUND_Y - 20, 110, 20, 'x', 120, 0.8, 0, '#6b4a2a', '#8a6a3a'),
+    movingPlat(2700, GROUND_Y - 20, 110, 20, 'x', 120, 0.8, Math.PI, '#6b4a2a', '#8a6a3a'),
+    // phase offset kept within [offTime, onTime] = [1.1, 1.5] so the pair is
+    // never simultaneously invisible.
+    vanishPlat(3350, GROUND_Y - 30, 90, 18, 1.5, 1.1, 0, '#6b4a2a', '#8a6a3a'),
+    vanishPlat(3450, GROUND_Y - 30, 90, 18, 1.5, 1.1, 1.3, '#6b4a2a', '#8a6a3a'),
+    plat(3620, GROUND_Y - 80, 100, 18, '#6b4a2a', '#8a6a3a'),
+    crumblePlat(4030, GROUND_Y - 20, 100, 20, '#6b4a2a', '#8a6a3a'),
+    crumblePlat(4180, GROUND_Y - 20, 100, 20, '#6b4a2a', '#8a6a3a'),
+  ];
+  const enemies = [
+    mkEnemy('crawler', 300, GROUND_Y - 28, { range: 70, speed: 55, color: '#7a5a34' }),
+    mkEnemy('flyer', 1000, 250, { range: 130, speed: 75, color: '#e8e8e8' }),
+    mkEnemy('thief', 2000, GROUND_Y - 24, { range: 90, speed: 60, w: 26, h: 26 }),
+    mkEnemy('roller', 3000, GROUND_Y - 18, { range: 120, speed: 100, w: 26, h: 26, stompable: false }),
+    mkEnemy('crawler', 3820, GROUND_Y - 28, { range: 70, speed: 58, color: '#7a5a34' }),
+    mkEnemy('flyer', 4400, 250, { range: 120, speed: 78, color: '#e8e8e8' }),
+  ];
+  const collectibles = [
+    ...scatter('nugget', 100, 450, 90, GROUND_Y - 40),
+    mkC('cutlass', 950, GROUND_Y - 40),
+    mkC('starapple', 1500, GROUND_Y - 80), mkC('sugarcane', 1900, GROUND_Y - 100),
+    mkC('nugget', 2450, GROUND_Y - 70), mkC('cassava', 2900, GROUND_Y - 40),
+    mkC('starpower', 1300, GROUND_Y - 40), mkC('speedboost', 3000, GROUND_Y - 40), mkC('extralife', 3660, GROUND_Y - 120),
+    mkC('bow', 2500, GROUND_Y - 40),
+    ...scatter('nugget', 3900, 4200, 90, 300),
+    mkC('gem', 850, GROUND_Y - 60), mkC('gem', 2150, GROUND_Y - 90), mkC('gem', 4100, GROUND_Y - 90),
+  ];
+  return {
+    id: 11, name: 'Bartica River Confluence', location: 'Bartica', width: w, groundY: GROUND_Y,
+    theme: 'river', night: false,
+    palette: { sky1: '#8fd3f4', sky2: '#eaf9ff', ground: '#7a5a34', groundTop: '#8a6a3a', accent: '#009E49', accent2: '#FCD116' },
+    playerStart: { x: 80, y: GROUND_Y - 46 }, checkpointX: 2300, endX: 4400,
+    platforms, hazards: g.hazards, enemies, collectibles, gates: [gate1],
+  };
+}
+
 // LEVEL_BUILDERS: called fresh each time a level loads so every playthrough
 // gets pristine entity instances (crumble/disappear/enemy state resets).
 const LEVEL_BUILDERS = [
   buildLevel1, buildLevel2, buildLevel3, buildLevel4, buildLevel5,
   buildLevel6, buildLevel7, buildLevel8, buildLevel9, buildLevel10,
+  buildLevel11,
 ];
 
 // LEVELS: a static reference build, handy for the title-screen background

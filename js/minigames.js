@@ -6,11 +6,15 @@
   same way 'paused'/'levelintro' already do, and setState(Game.prevState)
   resumes gameplay exactly where it left off once solved.
 
-  Four puzzle types, picked per-gate in levels.js via `puzzleType`:
+  Five puzzle types, picked per-gate in levels.js via `puzzleType`:
     'trivia'   - multiple choice, pulled from the large TRIVIA_POOL below.
     'sequence' - a Simon-says color pattern to watch then repeat.
     'sliding'  - a classic 3x3 sliding tile puzzle.
     'word'     - unscramble a hinted word by clicking letter tiles in order.
+    'rhythm'   - tap the drum in time with a live metronome beat, Mashramani-
+                 style -- unlike 'sequence' (memorize, then reproduce from
+                 silence), this one is real-time: you react to each cue as it
+                 lights up, not after the fact.
 
   A wrong answer never costs a life -- only a small score/time penalty via
   resolvePuzzleFail(), then the same puzzle type re-renders so the player can
@@ -108,6 +112,7 @@ function renderPuzzleUI() {
     case 'sequence': renderSequence(body); break;
     case 'sliding': renderSliding(body); break;
     case 'word': renderWord(body); break;
+    case 'rhythm': renderRhythm(body); break;
     default: renderTrivia(body); break;
   }
 }
@@ -418,5 +423,91 @@ function submitWordAnswer() {
     resolvePuzzleFail();
     Game.puzzle.slots = [];
     renderWordTiles();
+  }
+}
+
+// ---------------- rhythm (Mashramani drum beat) ----------------
+// Real-time reaction, not memory: a metronome lights one bead at a time and
+// the player must tap the drum while it's lit. Contrast with 'sequence'
+// above, which shows the whole pattern first and has you reproduce it from
+// memory once it stops.
+const RHYTHM_BEAT_MS = 650;
+const RHYTHM_HIT_RATIO = 0.8; // need at least 80% of beads caught to pass
+
+function renderRhythm(body) {
+  document.getElementById('puzzle-title').textContent = 'Tap the Drum With the Beat';
+  const length = Game.puzzle.rhythmLength || 5;
+  Game.puzzle.rhythmLength = length;
+  Game.puzzle.hits = 0;
+  Game.puzzle.beatIdx = -1;
+  Game.puzzle.beatOpen = false;
+  Game.puzzle.rhythmDone = false;
+
+  const hint = document.createElement('p');
+  hint.className = 'fact-text';
+  hint.textContent = `Mash a Mashramani beat! Tap the drum each time a bead lights up -- catch at least ${Math.ceil(length * RHYTHM_HIT_RATIO)} of ${length}.`;
+  body.appendChild(hint);
+
+  const track = document.createElement('div');
+  track.className = 'rhythm-track';
+  const beads = [];
+  for (let i = 0; i < length; i++) {
+    const bead = document.createElement('div');
+    bead.className = 'rhythm-bead';
+    track.appendChild(bead);
+    beads.push(bead);
+  }
+  body.appendChild(track);
+  Game.puzzle.beads = beads;
+
+  const drum = document.createElement('button');
+  drum.className = 'big-button rhythm-drum';
+  drum.textContent = '🥁 Tap!';
+  drum.addEventListener('click', handleRhythmTap);
+  body.appendChild(drum);
+
+  document.getElementById('puzzle-status').textContent = 'Get ready...';
+  setTimeout(() => startRhythmBeats(beads, length), 900);
+}
+
+function startRhythmBeats(beads, length) {
+  if (!Game.puzzle || Game.puzzle.beads !== beads) return; // puzzle closed/re-rendered since this was scheduled
+  document.getElementById('puzzle-status').textContent = 'Tap now!';
+  let i = 0;
+  function step() {
+    if (!Game.puzzle || Game.puzzle.beads !== beads) return;
+    if (i > 0) beads[i - 1].classList.remove('rhythm-bead-lit');
+    if (i >= length) { finishRhythm(); return; }
+    Game.puzzle.beatIdx = i;
+    Game.puzzle.beatOpen = true;
+    beads[i].classList.add('rhythm-bead-lit');
+    setTimeout(() => {
+      if (!Game.puzzle || Game.puzzle.beads !== beads) return;
+      Game.puzzle.beatOpen = false;
+      i++;
+      step();
+    }, RHYTHM_BEAT_MS);
+  }
+  step();
+}
+
+function handleRhythmTap() {
+  if (!Game.puzzle || Game.puzzle.type !== 'rhythm' || Game.puzzle.rhythmDone) return;
+  if (Game.puzzle.beatOpen && Game.puzzle.beatIdx >= 0) {
+    Game.puzzle.beatOpen = false; // one hit per beat
+    Game.puzzle.hits++;
+    Game.puzzle.beads[Game.puzzle.beatIdx].classList.add('rhythm-bead-hit');
+  }
+}
+
+function finishRhythm() {
+  if (!Game.puzzle) return;
+  Game.puzzle.rhythmDone = true;
+  const need = Math.ceil(Game.puzzle.rhythmLength * RHYTHM_HIT_RATIO);
+  if (Game.puzzle.hits >= need) {
+    resolvePuzzleSuccess();
+  } else {
+    resolvePuzzleFail(`Only caught ${Game.puzzle.hits}/${Game.puzzle.rhythmLength} beats -- try again! (-15 pts)`);
+    renderPuzzleUI();
   }
 }

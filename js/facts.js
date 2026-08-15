@@ -147,6 +147,20 @@ const FACTS = [
       "Harpy eagles, one of the world's largest and most powerful eagles, nest in the Kanukus.",
       "Conservationists consider the Kanuku Mountains one of the most important protected areas in South America.",
     ]
+  },
+  { // Level 11 - Bartica River Confluence
+    intro: [
+      "Bartica sits where the Essequibo, Mazaruni, and Cuyuni rivers all meet, earning it the nickname 'Gateway to the Interior'.",
+      "Every Easter, Bartica hosts a famous regatta with boat races across its river confluence.",
+    ],
+    bonus: [
+      "Bartica grew as a supply town for gold and diamond miners heading further into the interior.",
+      "The Mazaruni River, one of the three rivers meeting at Bartica, flows past some of Guyana's oldest gold fields.",
+      "Boats are still the fastest way to reach many interior communities beyond Bartica.",
+      "Bartica's Easter Regatta draws boats and visitors from across Guyana every year.",
+      "Bartica's name is believed to come from an Amerindian word describing the reddish clay along the riverbank.",
+      "Fishermen and miners alike depend on the rivers meeting at Bartica for their livelihoods.",
+    ]
   }
 ];
 
@@ -170,5 +184,9 @@ const BOSS_FACTS = [
   [
     "Kanaima is a spirit of justice from Guyanese Indigenous folklore, said to take the form of a jaguar to deliver retribution.",
     "In Indigenous Guyanese tradition, Kanaima represents balance and justice, punishing wrongdoing by shapeshifting into a jaguar.",
+  ],
+  [
+    "Watermama is a river spirit from Guyanese folklore, said to guard the rivers and appear combing her long hair on a moonlit rock.",
+    "Storytellers say Watermama can stir up whirlpools and sudden currents to punish anyone who disrespects her waters.",
   ],
 ];
