@@ -1,6 +1,6 @@
 /*
   bosses.js
-  Data + behavior for the 5 boss fights. Each boss fight happens in its own
+  Data + behavior for the 6 boss fights. Each boss fight happens in its own
   fixed single-screen arena (960x540, camera does not scroll horizontally).
 
   Each entry in BOSSES exposes a small, consistent interface that game.js drives:
@@ -580,4 +580,165 @@ const KanaimaBoss = {
   }
 };
 
-const BOSSES = [OleHigueBoss, MassacooramanBoss, MoongazerBoss, BaccooBoss, KanaimaBoss];
+// ================= BOSS 6 : WATERMAMA (river guardian, epilogue) =================
+// Distinct from Massacooraman (who slams a single arm down onto a warned
+// platform): Watermama anchors to the same 3-lily-pad river arena but
+// threatens the *platforms themselves* with whirlpools, then briefly rises
+// to sit on the middle one to comb her hair -- that's the vulnerable window.
+const WatermamaBoss = {
+  id: 6, name: 'Watermama', afterLevel: 11,
+  flavor: "The river's guardian spirit rises from the current to bar the way home. Dodge her whirlpools and strike when she surfaces to comb her hair!",
+  tip: "She warns which lily pad she's about to pull under with a spinning whirlpool -- get off it fast. When she surfaces at the middle pad to comb her hair, jump on her -- 3 hits wins it!",
+  arenaPlatforms: [
+    new Platform({ x: -50, y: ARENA_GROUND_Y + 40, w: 250, h: 200, type: 'solid', color: '#3a6b4a', topColor: '#4d8a5a' }),
+    new Platform({ x: 760, y: ARENA_GROUND_Y + 40, w: 250, h: 200, type: 'solid', color: '#3a6b4a', topColor: '#4d8a5a' }),
+    new Platform({ x: 210, y: 380, w: 110, h: 22, type: 'solid', color: '#3a6b4a', topColor: '#4d8a5a' }),
+    new Platform({ x: 425, y: 380, w: 110, h: 22, type: 'solid', color: '#3a6b4a', topColor: '#4d8a5a' }),
+    new Platform({ x: 640, y: 380, w: 110, h: 22, type: 'solid', color: '#3a6b4a', topColor: '#4d8a5a' }),
+  ],
+  arenaHazards: [new Hazard({ x: 200, y: ARENA_GROUND_Y + 40, w: 560, h: 100, kind: 'water', color: '#0f6a8a' })],
+  platformXs: [210, 425, 640],
+  platformY: 380,
+
+  init() {
+    return {
+      x: 480, y: 340, w: 46, h: 50,
+      phase: 'hidden', timer: 1.6, surgeCount: 0, targetIdx: 1,
+      hitsTaken: 0, hitsRequired: 3, vulnerable: false, invuln: 0, defeated: false,
+    };
+  },
+
+  update(b, dt, t, world) {
+    if (b.defeated) return;
+    b.invuln = Math.max(0, b.invuln - dt);
+    if (b.phase === 'hidden') {
+      b.timer -= dt;
+      if (b.timer <= 0) {
+        let idx;
+        do { idx = Math.floor(Math.random() * 3); } while (idx === b.targetIdx);
+        b.targetIdx = idx;
+        b.phase = 'telegraph'; b.timer = 0.8;
+      }
+    } else if (b.phase === 'telegraph') {
+      b.timer -= dt;
+      if (b.timer <= 0) { b.phase = 'whirlpool'; b.timer = 1.1; }
+    } else if (b.phase === 'whirlpool') {
+      b.timer -= dt;
+      if (b.timer <= 0) {
+        b.surgeCount++;
+        if (b.surgeCount >= 2) { b.surgeCount = 0; b.phase = 'surface'; b.timer = 0.5; }
+        else { b.phase = 'hidden'; b.timer = 1.0 + Math.random() * 0.6; }
+      }
+    } else if (b.phase === 'surface') {
+      b.timer -= dt;
+      b.x += (this.platformXs[1] + 55 - b.x) * 0.2;
+      if (b.timer <= 0) { b.phase = 'combing'; b.timer = 2.0; b.vulnerable = true; }
+    } else if (b.phase === 'combing') {
+      b.timer -= dt;
+      if (b.timer <= 0) { b.vulnerable = false; b.phase = 'dive'; b.timer = 0.4; }
+    } else if (b.phase === 'dive') {
+      b.timer -= dt;
+      if (b.timer <= 0) { b.phase = 'hidden'; b.timer = 1.2 + Math.random() * 0.6; }
+    }
+  },
+
+  getDangerRects(b) {
+    if (b.defeated) return [];
+    if (b.phase === 'whirlpool') {
+      const x = this.platformXs[b.targetIdx];
+      return [{ x: x - 5, y: this.platformY - 4, w: 120, h: 30 }];
+    }
+    return [];
+  },
+
+  getVulnerableTargets(b) {
+    if (b.defeated || !b.vulnerable || b.invuln > 0) return [];
+    return [{ id: 'main', x: b.x - b.w / 2, y: b.y, w: b.w, h: b.h }];
+  },
+
+  onTargetHit(b) {
+    b.hitsTaken++;
+    b.invuln = 1.0;
+    b.vulnerable = false;
+    if (b.hitsTaken >= b.hitsRequired) { b.defeated = true; }
+    else { b.phase = 'dive'; b.timer = 0.4; }
+  },
+
+  draw(ctx, b, camera, t) {
+    ctx.save();
+    // sloped banks, same shoreline treatment as Massacooraman's arena
+    const bankTop = ARENA_GROUND_Y + 40 - camera.y;
+    ctx.fillStyle = '#3a6b4a';
+    ctx.beginPath();
+    ctx.moveTo(160 - camera.x, bankTop); ctx.lineTo(200 - camera.x, bankTop); ctx.lineTo(200 - camera.x, bankTop + 26);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(760 - camera.x, bankTop); ctx.lineTo(800 - camera.x, bankTop); ctx.lineTo(760 - camera.x, bankTop + 26);
+    ctx.closePath(); ctx.fill();
+
+    // gentle ripples across the water surface
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1.4;
+    for (let i = 0; i < 4; i++) {
+      const rx = 260 + i * 150 - camera.x;
+      const ry = ARENA_GROUND_Y + 55 - camera.y + Math.sin(t * 1.5 + i) * 4;
+      ctx.beginPath(); ctx.ellipse(rx, ry, 30, 6, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    if (b.phase === 'telegraph' || b.phase === 'whirlpool') {
+      const x = this.platformXs[b.targetIdx] - camera.x + 55, y = this.platformY - camera.y + 10;
+      const spin = t * (b.phase === 'whirlpool' ? 10 : 4);
+      ctx.strokeStyle = b.phase === 'whirlpool' ? 'rgba(255,60,60,0.85)' : 'rgba(255,180,60,0.75)';
+      ctx.lineWidth = 3;
+      for (let r = 6; r <= 22; r += 6) {
+        ctx.beginPath();
+        ctx.arc(x, y, r, spin + r * 0.3, spin + r * 0.3 + Math.PI * 1.5);
+        ctx.stroke();
+      }
+    }
+
+    if (b.phase === 'surface' || b.phase === 'combing') {
+      const sx = b.x - camera.x, sy = b.y - camera.y;
+      const flash = b.invuln > 0 && Math.floor(t * 14) % 2 === 0;
+      // tail
+      ctx.fillStyle = flash ? '#ffffff' : '#1c8a9e';
+      ctx.beginPath();
+      ctx.moveTo(sx, sy + 30); ctx.quadraticCurveTo(sx - 6, sy + 50, sx - 22, sy + 56);
+      ctx.quadraticCurveTo(sx - 4, sy + 58, sx, sy + 46);
+      ctx.quadraticCurveTo(sx + 4, sy + 58, sx + 22, sy + 56);
+      ctx.quadraticCurveTo(sx + 6, sy + 50, sx, sy + 30);
+      ctx.fill();
+      // torso
+      ctx.fillStyle = flash ? '#ffffff' : '#2e9e8a';
+      ctx.beginPath(); ctx.ellipse(sx, sy + 16, 14, 20, 0, 0, Math.PI * 2); ctx.fill();
+      // long flowing hair
+      ctx.fillStyle = '#1a2a3a';
+      ctx.beginPath();
+      ctx.moveTo(sx - 12, sy - 14); ctx.quadraticCurveTo(sx - 20, sy + 10, sx - 14, sy + 34);
+      ctx.quadraticCurveTo(sx - 4, sy + 12, sx - 2, sy - 10); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(sx + 12, sy - 14); ctx.quadraticCurveTo(sx + 20, sy + 10, sx + 14, sy + 34);
+      ctx.quadraticCurveTo(sx + 4, sy + 12, sx + 2, sy - 10); ctx.fill();
+      // face
+      ctx.fillStyle = '#e8c9a0';
+      ctx.beginPath(); ctx.arc(sx, sy - 6, 11, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#222';
+      ctx.beginPath(); ctx.arc(sx - 4, sy - 6, 1.6, 0, Math.PI * 2); ctx.arc(sx + 4, sy - 6, 1.6, 0, Math.PI * 2); ctx.fill();
+      // comb, only out while she's actually combing
+      if (b.phase === 'combing') {
+        ctx.strokeStyle = '#FCD116'; ctx.lineWidth = 2;
+        const combY = sy - 4 + Math.sin(t * 6) * 6;
+        ctx.beginPath(); ctx.moveTo(sx + 16, combY); ctx.lineTo(sx + 16, combY + 14); ctx.stroke();
+        for (let i = 0; i < 4; i++) {
+          ctx.beginPath(); ctx.moveTo(sx + 16, combY + i * 4); ctx.lineTo(sx + 20, combY + i * 4); ctx.stroke();
+        }
+      }
+      if (b.vulnerable) {
+        ctx.strokeStyle = 'rgba(255,255,0,0.7)'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(sx, sy + 20, 28, 44, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+};
+
+const BOSSES = [OleHigueBoss, MassacooramanBoss, MoongazerBoss, BaccooBoss, KanaimaBoss, WatermamaBoss];

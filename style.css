@@ -288,6 +288,12 @@ html, body {
 .screen h2.gameover-title { color: #ff5c6c; font-size: 40px; }
 .screen h2.victory-title { color: #FCD116; font-size: 32px; }
 
+.stars-row {
+  font-size: 42px;
+  letter-spacing: 8px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
 /* ================= Puzzle gates (v2 mini-games) ================= */
 .puzzle-screen {
   background: radial-gradient(ellipse at center, rgba(10,30,60,0.9) 0%, rgba(4,10,20,0.97) 100%);
@@ -388,6 +394,32 @@ html, body {
 .word-tile-used {
   opacity: 0.25;
   cursor: default;
+}
+
+.rhythm-track {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+.rhythm-bead {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  border: 3px solid rgba(255,255,255,0.5);
+  transition: background 0.1s ease, box-shadow 0.1s ease, transform 0.1s ease;
+}
+.rhythm-bead-lit {
+  background: #FCD116;
+  box-shadow: 0 0 16px 4px rgba(252,209,22,0.8);
+  transform: scale(1.15);
+}
+.rhythm-bead-hit {
+  background: #009E49;
+  border-color: #9BFF57;
+}
+.rhythm-drum {
+  font-size: 22px;
 }
 
 .puzzle-flash-wrong {

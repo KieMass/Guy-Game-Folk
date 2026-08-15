@@ -1,9 +1,9 @@
 /*
   game.js
-  Main game loop, state machine (title, levelintro, playing, paused, bossintro,
-  boss, gameover, victory), camera, collisions, HUD, and all procedural
-  Canvas background rendering. Ties together entities.js, player.js, levels.js,
-  bosses.js and facts.js.
+  Main game loop, state machine (title, levelintro, playing, paused, puzzle,
+  levelcomplete, bossintro, boss, gameover, victory), camera, collisions, HUD,
+  and all procedural Canvas background rendering. Ties together entities.js,
+  player.js, levels.js, bosses.js, minigames.js and facts.js.
 */
 
 const CANVAS_W = 960, CANVAS_H = 540;
@@ -15,6 +15,11 @@ const CAMPAIGN = (() => {
     seq.push({ type: 'level', idx: i });
     if ((i + 1) % 2 === 0) seq.push({ type: 'boss', idx: (i + 1) / 2 - 1 });
   }
+  // Epilogue: level 11 (Bartica) + its own boss (Watermama, idx 5), tacked
+  // on after the main 10-level/5-boss campaign rather than folded into the
+  // every-2-levels pattern above.
+  seq.push({ type: 'level', idx: 10 });
+  seq.push({ type: 'boss', idx: 5 });
   seq.push({ type: 'victory' });
   return seq;
 })();
@@ -44,6 +49,8 @@ const Game = {
   isTouch: false,
   deathTimer: 0,
   continuesLeft: 3,
+  levelStars: {},      // { [level.id]: best stars 1-3 earned so far }, persisted to localStorage
+  levelHadDeath: false, // tracks a death during the *current* level attempt, for the 3rd star
 };
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -96,10 +103,27 @@ function init() {
   if (introScreen) introScreen.addEventListener('click', () => { clearTimeout(Game.introTimeout); dismissIntro(); });
   const bossIntroScreen = document.getElementById('screen-boss-intro');
   if (bossIntroScreen) bossIntroScreen.addEventListener('click', () => { clearTimeout(Game.introTimeout); dismissBossIntro(); });
+  const levelCompleteScreen = document.getElementById('screen-level-complete');
+  if (levelCompleteScreen) levelCompleteScreen.addEventListener('click', () => { clearTimeout(Game.introTimeout); dismissLevelComplete(); });
 
+  loadLevelStars();
   setupTouchControls();
   setState('title');
   requestAnimationFrame(loop);
+}
+
+// Best star rating (1-3) earned per level so far, persisted across sessions.
+// localStorage can be unavailable (private browsing, some WebViews) --
+// stars just won't persist across sessions in that case, nothing else breaks.
+function loadLevelStars() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('guyanaQuestLevelStars') || '{}');
+    Game.levelStars = (saved && typeof saved === 'object') ? saved : {};
+  } catch (e) { Game.levelStars = {}; }
+}
+function saveLevelStars(levelId, stars) {
+  Game.levelStars[levelId] = Math.max(Game.levelStars[levelId] || 0, stars);
+  try { localStorage.setItem('guyanaQuestLevelStars', JSON.stringify(Game.levelStars)); } catch (e) { /* not persisted this session */ }
 }
 
 // ---------------- touch controls ----------------
@@ -152,15 +176,17 @@ function setupTouchControls() {
 // ---------------- debug: jump straight to any level/boss for testing ----------------
 // Not part of the shipped game UI, just a keyboard shortcut so levels don't
 // have to be played through from the start to test them. Digits 1-9 = levels
-// 1-9, 0 = level 10; hold Shift + a digit 1-5 for that boss fight instead.
-// Works two ways: from the title screen it starts a brand new run there;
-// from the pause screen it warps the *current* run there (keeping score/
-// lives/etc as they are), so you can hop between levels mid-session.
+// 1-9, 0 = level 10, L = level 11; hold Shift + a digit 1-6 for that boss
+// fight instead (6 = Watermama). Works two ways: from the title screen it
+// starts a brand new run there; from the pause screen it warps the *current*
+// run there (keeping score/lives/etc as they are), so you can hop between
+// levels mid-session.
 function parseDebugLevelKey(code, shift) {
+  if (code === 'KeyL' && !shift) return { level: 10 };
   const m = code.match(/^Digit(\d)$/);
   if (!m) return null;
   const n = Number(m[1]);
-  if (shift) return n >= 1 && n <= 5 ? { boss: n - 1 } : null;
+  if (shift) return n >= 1 && n <= 6 ? { boss: n - 1 } : null;
   return { level: n === 0 ? 9 : n - 1 };
 }
 function debugStartRunAt(target) {
@@ -185,6 +211,9 @@ function handleKeyAction(code, shiftKey) {
       break;
     case 'bossintro':
       clearTimeout(Game.introTimeout); dismissBossIntro();
+      break;
+    case 'levelcomplete':
+      clearTimeout(Game.introTimeout); dismissLevelComplete();
       break;
     case 'playing':
     case 'boss':
@@ -223,11 +252,12 @@ function setState(newState) {
   const map = {
     title: 'screen-title', instructions: 'screen-instructions', levelintro: 'screen-intro', bossintro: 'screen-boss-intro',
     paused: 'screen-pause', gameover: 'screen-gameover', victory: 'screen-victory', puzzle: 'screen-puzzle',
+    levelcomplete: 'screen-level-complete',
   };
   if (map[newState]) document.getElementById(map[newState]).classList.remove('hidden');
 
   const hud = document.getElementById('hud');
-  if (['playing', 'paused', 'boss', 'levelintro', 'bossintro', 'puzzle'].includes(newState)) hud.classList.remove('hidden');
+  if (['playing', 'paused', 'boss', 'levelintro', 'bossintro', 'puzzle', 'levelcomplete'].includes(newState)) hud.classList.remove('hidden');
   else hud.classList.add('hidden');
 
   const bossWrap = document.getElementById('boss-health-wrap');
@@ -315,11 +345,14 @@ function loadLevel(idx) {
   Game.projectiles = []; Game.particles = []; Game.gemPopup = null; Game.toast = null;
   Game.levelElapsed = 0;
   Game.prevOnGround = false;
+  Game.levelHadDeath = false;
   showLevelIntro(level, idx);
 }
 
 function showLevelIntro(level, idx) {
-  document.getElementById('intro-title').textContent = `Level ${level.id}: ${level.name}`;
+  const best = Game.levelStars[level.id];
+  const bestStr = best ? `  ${'⭐'.repeat(best)}${'☆'.repeat(3 - best)}` : '';
+  document.getElementById('intro-title').textContent = `Level ${level.id}: ${level.name}${bestStr}`;
   document.getElementById('intro-fact').textContent = pickRandom(FACTS[idx].intro);
   setState('levelintro');
   clearTimeout(Game.introTimeout);
@@ -801,6 +834,7 @@ function killPlayerInstant() {
 // hits before the respawn actually happens, gives the player a clear "you
 // got hit" beat, and only resolves to a respawn or game-over once it's safe.
 function triggerDeath(particleColor) {
+  if (Game.currentLevel) Game.levelHadDeath = true; // disqualifies this attempt's 3rd star, see completeLevel()
   Game.lives--;
   Game.player.hasCutlass = false;
   Game.player.hasBow = false;
@@ -852,8 +886,39 @@ function triggerGameOver() {
 }
 
 function completeLevel() {
+  const level = Game.currentLevel;
   const timeBonus = Math.max(0, Math.round((100 - Game.levelElapsed) * 3));
   addScore(timeBonus);
+  const stars = computeLevelStars(level);
+  saveLevelStars(level.id, stars);
+  showLevelComplete(level, stars);
+}
+
+// 1 star for reaching the flag at all, +1 for all 3 gems, +1 for finishing
+// without dying -- a uniform formula that works the same for every level
+// regardless of length/layout, rather than a per-level time threshold that
+// would need re-tuning any time a level's length changes.
+function computeLevelStars(level) {
+  let stars = 1;
+  if ((level.gemsCollected || 0) >= 3) stars++;
+  if (!Game.levelHadDeath) stars++;
+  return stars;
+}
+
+function showLevelComplete(level, stars) {
+  document.getElementById('level-complete-title').textContent = `${level.name} Complete!`;
+  document.getElementById('level-complete-stars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+  const missing = [];
+  if ((level.gemsCollected || 0) < 3) missing.push('all 3 gems');
+  if (Game.levelHadDeath) missing.push('no deaths');
+  document.getElementById('level-complete-note').textContent =
+    stars >= 3 ? 'Perfect run!' : (missing.length ? `Next time: ${missing.join(' + ')} for a perfect score!` : '');
+  setState('levelcomplete');
+  clearTimeout(Game.introTimeout);
+  Game.introTimeout = setTimeout(dismissLevelComplete, 3200);
+}
+function dismissLevelComplete() {
+  if (Game.state !== 'levelcomplete') return;
   advanceCampaign();
 }
 
@@ -907,7 +972,7 @@ function bossHealthFraction(def, boss) {
 }
 
 function updateHUD() {
-  if (!['playing', 'paused', 'boss', 'levelintro', 'bossintro', 'puzzle'].includes(Game.state)) return;
+  if (!['playing', 'paused', 'boss', 'levelintro', 'bossintro', 'puzzle', 'levelcomplete'].includes(Game.state)) return;
   document.getElementById('hud-lives').textContent = '❤'.repeat(Math.max(0, Game.lives)) + '♡'.repeat(Math.max(0, 3 - Game.lives));
   document.getElementById('hud-score').textContent = `Score: ${Game.score}`;
   const lvlNameEl = document.getElementById('hud-level');
@@ -968,7 +1033,7 @@ function render() {
     drawBackground(ctx, LEVELS[0], { x: Game.t * 12, y: 0 }, Game.t);
     return;
   }
-  if (['levelintro', 'playing', 'paused', 'puzzle'].includes(Game.state) && Game.currentLevel) {
+  if (['levelintro', 'playing', 'paused', 'puzzle', 'levelcomplete'].includes(Game.state) && Game.currentLevel) {
     renderLevel();
     return;
   }
@@ -1413,6 +1478,7 @@ function drawBossBackground(ctx, def, t) {
     3: ['#05081a', '#1a2350'],
     4: ['#1e3a1e', '#3a6b3a'],
     5: ['#4a2a1a', '#c96a3a'],
+    6: ['#052a3a', '#0f6a8a'],
   };
   const [c1, c2] = themes[def.id] || ['#222', '#444'];
   const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
