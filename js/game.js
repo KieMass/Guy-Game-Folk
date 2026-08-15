@@ -595,10 +595,15 @@ function updateBoss(dt) {
     if (!Game.celebrationStarted) {
       Game.celebrationStarted = true;
       startBossCelebration();
-      // snap the player onto the ground and hold the victory pose for the
-      // celebration -- normal player.update() no longer runs once defeated
+      // Hold the victory pose for the celebration -- normal player.update()
+      // no longer runs once defeated. Deliberately leaves player.y wherever
+      // it already is (right where the winning stomp landed) instead of
+      // snapping it down to the arena's ground level -- that snap used to
+      // visibly yank the player downward for bosses whose vulnerable spot
+      // sits on an elevated platform rather than the ground (Massacooraman's
+      // stuck arm, Watermama's lily pad), reading as "falling" right as the
+      // fight was won.
       player.x = clamp(player.x, 10, ARENA_W - player.w - 10);
-      player.y = ARENA_GROUND_Y - player.h;
       player.vx = 0; player.vy = 0; player.onGround = true;
       player.state = 'victory';
     }
@@ -1067,7 +1072,11 @@ function renderBoss() {
   drawBossBackground(ctx, def, Game.t);
   def.arenaPlatforms.forEach((p) => p.draw(ctx, camera));
   if (def.arenaHazards) def.arenaHazards.forEach((h) => h.draw(ctx, camera, Game.t));
-  def.draw(ctx, boss, camera, Game.t);
+  // None of the per-boss draw() functions check boss.defeated themselves --
+  // they just render whatever phase they were last in -- so without this
+  // guard the boss stays fully visible, frozen mid-pose, through the entire
+  // fireworks celebration instead of disappearing on defeat.
+  if (!boss.defeated) def.draw(ctx, boss, camera, Game.t);
   Game.projectiles.forEach((p) => p.draw(ctx, camera));
   Game.player.draw(ctx, camera, Game.t);
   Game.particles.forEach((p) => p.draw(ctx, camera));
