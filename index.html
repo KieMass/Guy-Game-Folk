@@ -83,6 +83,14 @@
     <p class="hint">Press any key or tap to begin the fight</p>
   </div>
 
+  <!-- ============ Puzzle-gate screen (v2 mini-games) ============ -->
+  <div id="screen-puzzle" class="screen hidden puzzle-screen">
+    <h2 id="puzzle-title">Solve to Continue</h2>
+    <div id="puzzle-body"></div>
+    <p id="puzzle-status" class="hint"></p>
+    <button id="btn-skip-puzzle" class="skip-button">Can't solve it? Skip (−1 life)</button>
+  </div>
+
   <!-- ============ Pause screen ============ -->
   <div id="screen-pause" class="screen hidden">
     <h2>Paused</h2>
@@ -111,6 +119,7 @@
 
 <script src="js/entities.js"></script>
 <script src="js/facts.js"></script>
+<script src="js/minigames.js"></script>
 <script src="js/levels.js"></script>
 <script src="js/bosses.js"></script>
 <script src="js/player.js"></script>

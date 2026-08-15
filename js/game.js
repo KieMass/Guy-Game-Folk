@@ -67,7 +67,7 @@ function init() {
   window.addEventListener('keydown', (e) => {
     Game.keys[e.code] = true;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
-    handleKeyAction(e.code);
+    handleKeyAction(e.code, e.shiftKey);
   });
   window.addEventListener('keyup', (e) => { Game.keys[e.code] = false; });
   // Safety net: if focus is lost while a key is physically held (alt-tab,
@@ -87,6 +87,8 @@ function init() {
   if (btnAgain) btnAgain.addEventListener('click', backToTitle);
   const btnResume = document.getElementById('btn-resume');
   if (btnResume) btnResume.addEventListener('click', togglePause);
+  const btnSkipPuzzle = document.getElementById('btn-skip-puzzle');
+  if (btnSkipPuzzle) btnSkipPuzzle.addEventListener('click', skipPuzzleForLife);
 
   // level/boss intro cards have no button -- any tap on the card dismisses them,
   // mirroring the "press any key" keyboard behavior for touch-only devices
@@ -147,11 +149,34 @@ function setupTouchControls() {
   if (btnPause) btnPause.addEventListener('click', (e) => { e.preventDefault(); togglePause(); });
 }
 
-function handleKeyAction(code) {
+// ---------------- debug: jump straight to any level/boss for testing ----------------
+// Not part of the shipped game UI, just a keyboard shortcut so levels don't
+// have to be played through from the start to test them. Digits 1-9 = levels
+// 1-9, 0 = level 10; hold Shift + a digit 1-5 for that boss fight instead.
+// Works two ways: from the title screen it starts a brand new run there;
+// from the pause screen it warps the *current* run there (keeping score/
+// lives/etc as they are), so you can hop between levels mid-session.
+function parseDebugLevelKey(code, shift) {
+  const m = code.match(/^Digit(\d)$/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (shift) return n >= 1 && n <= 5 ? { boss: n - 1 } : null;
+  return { level: n === 0 ? 9 : n - 1 };
+}
+function debugStartRunAt(target) {
+  Game.lives = 3; Game.score = 0; Game.unlockedBonusFacts = []; Game.treasureCount = 0;
+  Game.toast = null; Game.continuesLeft = 3;
+  if (target.boss !== undefined) loadBoss(target.boss); else loadLevel(target.level);
+}
+
+function handleKeyAction(code, shiftKey) {
   switch (Game.state) {
-    case 'title':
+    case 'title': {
       if (code === 'Space' || code === 'Enter') setState('instructions');
+      const debugTarget = parseDebugLevelKey(code, shiftKey);
+      if (debugTarget) debugStartRunAt(debugTarget);
       break;
+    }
     case 'instructions':
       if (code === 'Space' || code === 'Enter') startNewRun();
       break;
@@ -165,9 +190,23 @@ function handleKeyAction(code) {
     case 'boss':
       if (code === 'Escape' || code === 'KeyP') togglePause();
       break;
-    case 'paused':
-      if (code === 'Escape' || code === 'KeyP') togglePause();
+    case 'puzzle':
+      // digit keys 1-4 pick a trivia answer; sequence/sliding/word puzzles
+      // are click/tap-only (see js/minigames.js).
+      if (['Digit1', 'Digit2', 'Digit3', 'Digit4'].includes(code)) {
+        handlePuzzleDigitKey(Number(code.slice(-1)) - 1);
+      }
       break;
+    case 'paused': {
+      if (code === 'Escape' || code === 'KeyP') togglePause();
+      // debug warp: jump the *current* run straight to another level/boss
+      // (see parseDebugLevelKey above) instead of resuming where you paused.
+      const debugTarget = parseDebugLevelKey(code, shiftKey);
+      if (debugTarget) {
+        if (debugTarget.boss !== undefined) loadBoss(debugTarget.boss); else loadLevel(debugTarget.level);
+      }
+      break;
+    }
     case 'gameover':
       if (code === 'Space' || code === 'Enter') retryGame();
       break;
@@ -183,12 +222,12 @@ function setState(newState) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
   const map = {
     title: 'screen-title', instructions: 'screen-instructions', levelintro: 'screen-intro', bossintro: 'screen-boss-intro',
-    paused: 'screen-pause', gameover: 'screen-gameover', victory: 'screen-victory',
+    paused: 'screen-pause', gameover: 'screen-gameover', victory: 'screen-victory', puzzle: 'screen-puzzle',
   };
   if (map[newState]) document.getElementById(map[newState]).classList.remove('hidden');
 
   const hud = document.getElementById('hud');
-  if (['playing', 'paused', 'boss', 'levelintro', 'bossintro'].includes(newState)) hud.classList.remove('hidden');
+  if (['playing', 'paused', 'boss', 'levelintro', 'bossintro', 'puzzle'].includes(newState)) hud.classList.remove('hidden');
   else hud.classList.add('hidden');
 
   const bossWrap = document.getElementById('boss-health-wrap');
@@ -441,8 +480,27 @@ function updatePlaying(dt) {
     if (aabbOverlap(player, p)) { hurtPlayerFromContact(); p.dead = true; }
   }
 
-  // checkpoint
-  if (!level.checkpointReached && player.x >= level.checkpointX && player.onGround) {
+  // locked gates -- the gate is a solid Platform, so the player is already
+  // physically stopped flush against it by the time this fires; the small
+  // margin just catches "touching" without needing an exact pixel match.
+  for (const gate of level.gates) {
+    if (gate.open) continue;
+    if (aabbOverlap(player, { x: gate.x - 4, y: gate.y, w: gate.w + 8, h: gate.h })) {
+      startGatePuzzle(gate);
+      return;
+    }
+  }
+
+  // checkpoint -- only capture while standing on solid ground (a real ground
+  // segment or a hand-placed static plat(), both type 'solid'), never on a
+  // moving/crumbling/disappearing platform or a gate. Without this guard, a
+  // player who first crosses checkpointX mid-jump and lands on one of those
+  // unstable platforms (e.g. a vanish-platform stepping stone over a pit)
+  // gets that precarious spot captured as their checkpoint -- so a later
+  // death can respawn them right back over the hazard, sometimes onto a
+  // platform that's mid-cycle invisible, dropping them straight back in.
+  if (!level.checkpointReached && player.x >= level.checkpointX && player.onGround &&
+      player.standingOn && player.standingOn.type === 'solid') {
     level.checkpointReached = true;
     level.checkpointPos = { x: player.x, y: player.y };
     spawnBurst(player.x + player.w / 2, player.y, '#FCD116', 10);
@@ -849,7 +907,7 @@ function bossHealthFraction(def, boss) {
 }
 
 function updateHUD() {
-  if (!['playing', 'paused', 'boss', 'levelintro', 'bossintro'].includes(Game.state)) return;
+  if (!['playing', 'paused', 'boss', 'levelintro', 'bossintro', 'puzzle'].includes(Game.state)) return;
   document.getElementById('hud-lives').textContent = '❤'.repeat(Math.max(0, Game.lives)) + '♡'.repeat(Math.max(0, 3 - Game.lives));
   document.getElementById('hud-score').textContent = `Score: ${Game.score}`;
   const lvlNameEl = document.getElementById('hud-level');
@@ -910,7 +968,7 @@ function render() {
     drawBackground(ctx, LEVELS[0], { x: Game.t * 12, y: 0 }, Game.t);
     return;
   }
-  if (['levelintro', 'playing', 'paused'].includes(Game.state) && Game.currentLevel) {
+  if (['levelintro', 'playing', 'paused', 'puzzle'].includes(Game.state) && Game.currentLevel) {
     renderLevel();
     return;
   }
