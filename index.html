@@ -115,6 +115,18 @@
     <h2 id="gameover-title" class="gameover-title">Game Over</h2>
     <p id="gameover-score" class="fact-text">Score: 0</p>
     <p id="gameover-continues" class="hint"></p>
+    <!-- Only shown when the run has truly ended (no continues left) *and*
+         the score actually cracks the top 5 -- see qualifiesForHighScore()
+         in js/game.js. Finishing the game isn't the only way onto the
+         leaderboard. -->
+    <div id="gameover-save-form-wrap" class="hidden">
+      <p class="hint">Top 5 score! Save it:</p>
+      <form id="gameover-save-form" class="save-score-form">
+        <input id="gameover-name-input" class="name-input" type="text" maxlength="12" placeholder="Enter your name" autocomplete="off">
+        <button type="submit" class="big-button">Save My Score</button>
+      </form>
+      <p id="gameover-save-status" class="hint"></p>
+    </div>
     <button id="btn-retry" class="big-button">Tap to Retry</button>
   </div>
 
