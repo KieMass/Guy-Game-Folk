@@ -543,27 +543,47 @@ html, body {
   background: rgba(255,255,255,0.4);
 }
 
+/* Pulled down close to the bottom edge (was bottom:8%, which put the
+   buttons squarely across GROUND_Y -- the player's actual standing
+   height -- so a grounded player was frequently hidden right behind
+   them, worst of all three touch clusters since the player starts every
+   level standing right where the d-pad sits). At bottom:4% the buttons
+   sit almost entirely below GROUND_Y, in the decorative ground-fill
+   band, clipping at most the player's feet instead of their whole body.
+   Also shrunk and lightened per feedback -- smaller footprint, and more
+   see-through at rest so any remaining overlap still shows the player
+   through it; both buttons brighten back up on press for clear feedback. */
 #touch-dpad {
   position: absolute;
   left: 4%;
-  bottom: 8%;
-  width: 150px;
-  height: 64px;
+  bottom: 4%;
+  width: 118px;
+  height: 48px;
   pointer-events: none;
 }
 .touch-btn-dpad {
-  width: 68px;
-  height: 64px;
-  border-radius: 14px;
+  width: 52px;
+  height: 48px;
+  border-radius: 12px;
   bottom: 0;
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,0.4);
+}
+.touch-btn-dpad:active,
+.touch-btn-dpad.touch-active {
+  background: rgba(255,255,255,0.38);
 }
 #btn-left.touch-btn-dpad { left: 0; }
 #btn-right.touch-btn-dpad { right: 0; }
 
+/* Nudged down slightly too (was bottom:6%) for the same reason, kept at
+   their existing size since these two were already the better-placed
+   pair -- the player is rarely pinned under them since the camera keeps
+   it centered except at a level's start/end or an arena's edges. */
 #touch-actions {
   position: absolute;
   right: 4%;
-  bottom: 6%;
+  bottom: 4%;
   width: 170px;
   height: 100px;
   pointer-events: none;
