@@ -112,17 +112,8 @@ function init() {
   const levelCompleteScreen = document.getElementById('screen-level-complete');
   if (levelCompleteScreen) levelCompleteScreen.addEventListener('click', () => { clearTimeout(Game.introTimeout); dismissLevelComplete(); });
 
-  const victorySaveForm = document.getElementById('victory-save-form');
-  if (victorySaveForm) victorySaveForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const input = document.getElementById('victory-name-input');
-    const name = (input.value || '').trim();
-    const statusEl = document.getElementById('victory-save-status');
-    if (!name) { statusEl.textContent = 'Enter a name first!'; return; }
-    saveHighScore(name, Game.score);
-    statusEl.textContent = `Saved, ${name.slice(0, 12)}!`;
-    victorySaveForm.classList.add('hidden');
-  });
+  wireSaveScoreForm('victory-save-form', 'victory-name-input', 'victory-save-status');
+  wireSaveScoreForm('gameover-save-form', 'gameover-name-input', 'gameover-save-status');
 
   loadLevelStars();
   setupTouchControls();
@@ -164,6 +155,35 @@ function saveHighScore(name, score) {
   const top = scores.slice(0, HIGH_SCORE_MAX);
   try { localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(top)); } catch (e) { /* not persisted this session */ }
   return top;
+}
+
+// Would this score actually crack the saved top 5 -- without ties bumping
+// an existing entry, matching what saveHighScore's stable sort would really
+// do (see its comment). Used to decide whether a run that ended in defeat,
+// not victory, still gets offered the save-score form.
+function qualifiesForHighScore(score) {
+  if (score <= 0) return false;
+  const scores = loadHighScores();
+  if (scores.length < HIGH_SCORE_MAX) return true;
+  return score > scores[scores.length - 1].score;
+}
+
+// Shared by the victory and game-over screens: a real <form> submit (Enter
+// or button click both work) that saves the current score under the typed
+// name, shows a confirmation, and hides itself so it can't be resubmitted.
+function wireSaveScoreForm(formId, inputId, statusId) {
+  const form = document.getElementById(formId);
+  if (!form) return;
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = document.getElementById(inputId);
+    const name = (input.value || '').trim();
+    const statusEl = document.getElementById(statusId);
+    if (!name) { statusEl.textContent = 'Enter a name first!'; return; }
+    saveHighScore(name, Game.score);
+    statusEl.textContent = `Saved, ${name.slice(0, 12)}!`;
+    form.classList.add('hidden');
+  });
 }
 
 function renderHighScores() {
@@ -950,14 +970,28 @@ function triggerGameOver() {
   const continuesEl = document.getElementById('gameover-continues');
   const btnRetry = document.getElementById('btn-retry');
   const stageName = Game.currentLevel ? Game.currentLevel.name : (Game.currentBossDef ? Game.currentBossDef.name : '');
+  const saveWrap = document.getElementById('gameover-save-form-wrap');
   if (Game.continuesLeft > 0) {
     titleEl.textContent = 'Continue?';
     continuesEl.textContent = `${Game.continuesLeft} continue${Game.continuesLeft === 1 ? '' : 's'} left`;
     btnRetry.textContent = `Tap to Continue at ${stageName}`;
+    // the run isn't over yet -- the score will keep changing, so there's
+    // nothing final to save here regardless of how it currently ranks
+    if (saveWrap) saveWrap.classList.add('hidden');
   } else {
     titleEl.textContent = 'Game Over';
     continuesEl.textContent = 'Out of continues -- back to the beginning';
     btnRetry.textContent = 'Tap to Start Over';
+    if (saveWrap) {
+      if (qualifiesForHighScore(Game.score)) {
+        saveWrap.classList.remove('hidden');
+        document.getElementById('gameover-name-input').value = '';
+        document.getElementById('gameover-save-status').textContent = '';
+        document.getElementById('gameover-save-form').classList.remove('hidden');
+      } else {
+        saveWrap.classList.add('hidden');
+      }
+    }
   }
 }
 
