@@ -24,13 +24,28 @@ html, body {
   justify-content: center;
 }
 
+/* The Android app draws edge-to-edge (forced from API 35+), so on phones
+   with a camera notch/cutout the game would otherwise sit partly under it
+   in landscape. Padding the body by the safe-area insets keeps the whole
+   game area -- HUD, pause button, touch controls -- clear of it. These
+   resolve to 0 in desktop browsers. */
+body {
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+           env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+
 /* Scales to fill either the viewport width or height (whichever is the
    tighter constraint) while always preserving the 960:540 game aspect
    ratio -- critical on phone screens, which rarely match a 16:9 desktop
-   window and would otherwise stretch the canvas. */
+   window and would otherwise stretch the canvas. Sized against the
+   safe area (viewport minus any notch/cutout insets), not the raw viewport. */
 #game-container {
   position: relative;
-  width: min(960px, 100vw, calc(100vh * 960 / 540));
+  width: min(
+    960px,
+    calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)),
+    calc((100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 960 / 540)
+  );
   aspect-ratio: 960 / 540;
   background: #000;
   box-shadow: 0 0 40px rgba(0,0,0,0.6);
