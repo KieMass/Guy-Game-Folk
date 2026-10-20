@@ -686,17 +686,24 @@ function updateBoss(dt) {
     if (!Game.celebrationStarted) {
       Game.celebrationStarted = true;
       startBossCelebration();
-      // Hold the victory pose for the celebration -- normal player.update()
-      // no longer runs once defeated. Deliberately leaves player.y wherever
-      // it already is (right where the winning stomp landed) instead of
-      // snapping it down to the arena's ground level -- that snap used to
-      // visibly yank the player downward for bosses whose vulnerable spot
-      // sits on an elevated platform rather than the ground (Massacooraman's
-      // stuck arm, Watermama's lily pad), reading as "falling" right as the
-      // fight was won.
+      // The winning stomp just bounced the player upward, so don't freeze
+      // them mid-air: drop straight down (no drifting off a lily pad into
+      // the river) and only strike the victory pose once they've landed.
       player.x = clamp(player.x, 10, ARENA_W - player.w - 10);
-      player.vx = 0; player.vy = 0; player.onGround = true;
-      player.state = 'victory';
+      player.vx = 0;
+      settlePlayerOverPlatform(player, def.arenaPlatforms);
+    }
+    if (player.state !== 'victory') {
+      player.update(dt, {}, def.arenaPlatforms, Game.t);
+      player.vx = 0;
+      // Fallback so the pose always happens: if somehow nothing caught the
+      // player, stop them at the arena floor instead of falling forever.
+      const floorY = ARENA_GROUND_Y + 40 - player.h;
+      if (player.y > floorY) { player.y = floorY; player.onGround = true; }
+      if (player.onGround) {
+        player.vy = 0;
+        player.state = 'victory';
+      }
     }
     Game.bossDefeatTimer += dt;
     updateFireworks(dt);
@@ -712,6 +719,23 @@ function updateBoss(dt) {
 
   updateParticles(dt);
   updateToast(dt);
+}
+
+// If the player's center isn't above any solid platform when a boss falls
+// (e.g. the winning stomp was on the edge of Massacooraman's arm, which
+// overhangs its lily pad), nudge them sideways onto the nearest one so the
+// post-victory drop lands on solid ground rather than in the water.
+function settlePlayerOverPlatform(player, platforms) {
+  const cx = player.x + player.w / 2;
+  const solids = platforms.filter((p) => p.isSolid());
+  if (!solids.length || solids.some((p) => cx >= p.x && cx <= p.x + p.w)) return;
+  let best = null, bestDist = Infinity;
+  for (const p of solids) {
+    const d = cx < p.x ? p.x - cx : cx - (p.x + p.w);
+    if (d < bestDist) { bestDist = d; best = p; }
+  }
+  const targetCx = clamp(cx, best.x + player.w / 2, best.x + best.w - player.w / 2);
+  player.x = clamp(targetCx - player.w / 2, 10, ARENA_W - player.w - 10);
 }
 
 // ---------------- boss-victory fireworks ----------------
